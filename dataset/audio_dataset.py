@@ -7,11 +7,10 @@ import  os
 
 class AudioDataset(Dataset):
     """
-    Dataset  class  for  audio 
+    Dataset for audio files with resampling and optional transforms.
     
-    outputs :
-        -- audio tensor
-        -- file path
+    Returns:
+        Dict containing waveform tensor, audio path, transcript, and text_ids.
     """
     def __init__(
         self,
@@ -20,32 +19,52 @@ class AudioDataset(Dataset):
         file_format:str = '.wav',
         time_lenght:Optional[float] = 4,
         audio_transform: Optional[Callable] = None,
-        text_transform: Optional[Callable] = None, 
+        text_transform: Optional[Callable] = None,
+        text_key: str = 'transcript',
     ):
         """
-        TODO
+        Initialize audio dataset.
         
+        Args:
+            manifest: List of dicts with 'audio_path' key
+            sample_rate: Target sample rate for audio
+            file_format: Supported audio format (default: .wav)
+            time_lenght: Max audio length in seconds (default: 4)
+            audio_transform: Optional audio preprocessing function
+            text_transform: Optional text preprocessing function
+            text_key: Key name for text data in manifest (default: 'transcript')
         """
         if not isinstance(manifest, list) or not all("audio_path" in m for m in manifest):
             raise ValueError("Manifest need to  have key 'audio_path'")
-        if file_format not in ['.wav', 'ogg']:
+        if file_format not in ('.wav', '.flac', '.mp3', '.ogg', '.m4a', '.aac', '.wma'):
             raise ValueError(f'File format:{file_format} is not supported')
         self.timestamp = time_lenght
         self.rate = sample_rate
         self.manifest = manifest
         self.audio_transform = audio_transform
         self.text_transform = text_transform
+        self.text_key = text_key
         
         
     def __len__(self) -> int:
+        """Return number of samples in dataset."""
         return len(self.manifest)
     
     
     def __getitem__(self, idx:int) ->Dict[str, Any]:
+        """
+        Get audio sample by index.
+        
+        Args:
+            idx: Sample index
+            
+        Returns:
+            Dict with waveform, audio_path, transcript, and text_ids
+        """
         assert(isinstance(idx, int))
         sample = self.manifest[idx]
         sample_path = sample['audio_path']
-        transcript = sample.get("transcript", None) # use  get  in  case  we dont  have text  
+        transcript = sample.get(self.text_key, None) # use flexible text key  
         
         
         ### LOAD AND RESAMPLE
