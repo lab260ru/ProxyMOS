@@ -1,0 +1,42 @@
+# Configuration for DNSMOS model testing
+
+# Model configuration
+model:
+  name: "dnsmos"
+  device: "cuda"  # or "cpu"
+  checkpoint_path: "bak_ovr.onnx" 
+  
+  # DNSMOS specific configuration
+  dnsmos:
+    sample_rate: 16000
+    
+
+# Dataset configuration
+dataset:
+  manifest: [
+    {
+      "audio_path": "../Speaker26_000.wav",
+      "transcript": "Test audio file for quality assessment"
+    },
+    {
+      "audio_path": "../Speaker26_001.wav",
+      "transcript": "Test audio file for quality assessment"
+    },
+    {
+      "audio_path": "../Speaker26_002.wav",
+      "transcript": "Test audio file for quality assessment"
+    }
+  ]
+  sample_rate: 16000
+  file_format: ".wav"
+  time_length: 60.0
+  max_length: 60.0
+
+# Inference configuration
+inference:
+  batch_size: 1
+  num_workers: 0
+  output_dir: "dnsmos_results"
+  save_every_n_batches: 1
+  prefetch_factor: 2
+  experiment_name: "dnsmos_test"

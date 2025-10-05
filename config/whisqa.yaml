@@ -1,0 +1,41 @@
+# Configuration for single audio file testing
+
+# Model configuration
+model:
+  name: "whisqa"
+  device: "cuda"
+  checkpoint_path: "multi_head_model.pt"
+    # Use CPU for testing
+  
+  # WhiSQA specific configuration
+  whisqa: # Use CPU for testing
+    sample_rate: 16000
+    model_type: "multi"
+
+# Dataset configuration
+dataset:
+  manifest: [
+    {
+      "audio_path": "../Speaker26_000.wav",
+      "transcript": "Test audio file for quality assessment"
+    },
+    {
+      "audio_path": "../Speaker26_001.wav",
+      "transcript": "Test audio file for quality assessment"
+    },
+    {
+      "audio_path": "../Speaker26_002.wav",
+      "transcript": "Test audio file for quality assessment"
+    }
+  ]
+  sample_rate: 16000
+  file_format: ".wav"
+  time_length: 10.0  # Allow up to 10 seconds
+
+# Inference configuration
+inference:
+  batch_size: 1  # Process one file at a time
+  num_workers: 0
+  output_dir: "single_file_results"
+  save_every_n_batches: 1
+  experiment_name: "single_file_test"

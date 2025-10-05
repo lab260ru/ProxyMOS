@@ -1,0 +1,43 @@
+# ==========================================================
+#  NISQA Inference Configuration
+#  Author: your_name
+#  Description:
+#    Configuration file for running non-intrusive speech quality
+#    assessment (NISQA) using the NISQAWrapper model.
+# ==========================================================
+
+model:
+  name: "nisqa"                 # Must match wrapper class name (NISQAWrapper)
+  device: "cuda"                # "cuda" or "cpu"
+  checkpoint_path: "./checkpoints/nisqa/NISQA_TL_model.pt"  # path to pretrained NISQA checkpoint
+
+  # Optional model-specific params
+  nisqa:
+    checkpoint_path: "./checkpoints/nisqa/NISQA_TL_model.pt"
+
+# ----------------------------------------------------------
+dataset:
+  manifest: [
+    {
+      "audio_path": "../Speaker26_000.wav",
+      "transcript": "Test audio file for quality assessment"
+    },
+    {
+      "audio_path": "../Speaker26_001.wav",
+      "transcript": "Test audio file for quality assessment"
+    },
+    {
+      "audio_path": "../Speaker26_002.wav",
+      "transcript": "Test audio file for quality assessment"
+    }
+  ]                     # audio segment length in seconds
+
+# ----------------------------------------------------------
+inference:
+  batch_size: 1                   # batch size (NISQA supports small batches)
+  num_workers: 2                    # number of DataLoader workers
+  prefetch_factor: 2                # optional for better throughput
+  output_dir: "./results/nisqa"     # where to save JSON/CSV results
+  save_every_n_batches: 1         # how often to save partial results
+
+
