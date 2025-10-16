@@ -12,6 +12,7 @@ from utils.utils import (
     print_gpu_info,
     console
 )
+from pathlib import Path
 
 
 def main():
@@ -44,12 +45,14 @@ def main():
     print_gpu_info()
     
     try:
-        # Create dataset
+        # Create dataset (supports either manifest or audio_dir)
         dataset = AudioDataset(
-            manifest=config['dataset'].get('manifest', []),  # Use manifest if available
+            manifest=config['dataset'].get('manifest'),
+            audio_dir=config['dataset'].get('audio_dir'),
             sample_rate=config['dataset'].get('sample_rate', 16000),
             file_format=config['dataset'].get('file_extension', '.wav'),
-            time_length=config['dataset'].get('max_length', 4)
+            time_length=config['dataset'].get('max_length', 4),
+            recursive=config['dataset'].get('recursive', True)
         )
         console.print(f"[green]✅ Loaded {len(dataset)} audio files[/green]\n")
         
@@ -63,10 +66,15 @@ def main():
         
         # Create model wrapper
         model_config = config['model']
-        model_specific_config = model_config.get(model_config['name'], {})
-        model_specific_config.update({
-        'checkpoint_path': model_specific_config.get('checkpoint_path') or model_config.get('checkpoint_path'),
-        })
+        raw_specific = model_config.get(model_config['name'])
+        model_specific_config = dict(raw_specific) if isinstance(raw_specific, dict) else {}
+        # Merge checkpoint_path from either nested or top-level if present
+        checkpoint_path = model_specific_config.get('checkpoint_path')
+        if not checkpoint_path:
+            checkpoint_path = model_config.get('checkpoint_path')
+        if checkpoint_path is not None:
+            model_specific_config['checkpoint_path'] = checkpoint_path
+        
         model_wrapper = get_model_wrapper(
             model_name=model_config['name'],
             config=model_specific_config,

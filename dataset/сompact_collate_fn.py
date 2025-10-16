@@ -14,14 +14,14 @@ def compact_collate_fn(batch: List[Dict[str, Any]]) -> Dict[str, Any]:
         batch: List of dictionaries containing:
             - waveform: torch.Tensor [C, T] - audio waveform
             - audio_path: str - path to audio file
-            - transcript: str - text transcript
+            - transcript: str - text transcript (optional)
             - text_ids: torch.Tensor - processed text tokens (optional)
     
     Returns:
         Dictionary containing batched data:
             - waveform: torch.Tensor [B, C, T] - batched audio waveforms
             - audio_path: List[str] - list of audio file paths
-            - transcript: List[str] - list of text transcripts
+            - transcript: List[str|None] - list of text transcripts (or None)
             - text_ids: torch.Tensor [B, T] - batched text tokens (or None)
     """
     # Extract waveforms and ensure correct shape [T, C] for padding
@@ -37,7 +37,7 @@ def compact_collate_fn(batch: List[Dict[str, Any]]) -> Dict[str, Any]:
     # Handle text_ids with proper None handling
     text_ids = []
     for item in batch:
-        if item["text_ids"] is not None:
+        if item.get("text_ids") is not None:
             text_ids.append(item["text_ids"])
         else:
             text_ids.append(torch.tensor([], dtype=torch.long))
@@ -57,7 +57,7 @@ def compact_collate_fn(batch: List[Dict[str, Any]]) -> Dict[str, Any]:
     return {
         "waveform": padded_waveforms,  # [B, C, T]
         "audio_path": [item["audio_path"] for item in batch],
-        "transcript": [item["transcript"] for item in batch],
+        "transcript": [item.get("transcript") for item in batch],
         "text_ids": padded_text_ids
     }
 
