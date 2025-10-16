@@ -1,0 +1,57 @@
+{
+  "metrics": {
+    "total_files_processed": 3,
+    "total_time_seconds": 0.563,
+    "average_throughput_items_per_second": 5.325,
+    "current_throughput_items_per_second": 5.392,
+    "average_time_per_file_seconds": 0.188,
+    "batches": 3
+  },
+  "results": [
+    {
+      "audio_file_path": "audio\\Speaker26_000.wav",
+      "transcript": "",
+      "predictions": {
+        "ovrl_score": 1.251720905303955,
+        "sig_score": 10.11589241027832,
+        "bak_score": 5.439598083496094,
+        "mos": 1.251720905303955
+      },
+      "batch_info": {
+        "batch_index": 0,
+        "sample_index": 0,
+        "timestamp": "2025-10-16T17:20:15.485618"
+      }
+    },
+    {
+      "audio_file_path": "audio\\Speaker26_001.wav",
+      "transcript": "",
+      "predictions": {
+        "ovrl_score": 1.8410170078277588,
+        "sig_score": 10.423826217651367,
+        "bak_score": 5.894962787628174,
+        "mos": 1.8410170078277588
+      },
+      "batch_info": {
+        "batch_index": 1,
+        "sample_index": 0,
+        "timestamp": "2025-10-16T17:20:15.609222"
+      }
+    },
+    {
+      "audio_file_path": "audio\\Speaker26_002.wav",
+      "transcript": "",
+      "predictions": {
+        "ovrl_score": 2.4182770252227783,
+        "sig_score": 12.048688888549805,
+        "bak_score": 6.10122537612915,
+        "mos": 2.4182770252227783
+      },
+      "batch_info": {
+        "batch_index": 2,
+        "sample_index": 0,
+        "timestamp": "2025-10-16T17:20:15.729665"
+      }
+    }
+  ]
+}

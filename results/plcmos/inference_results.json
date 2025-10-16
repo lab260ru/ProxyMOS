@@ -1,0 +1,11 @@
+{
+  "metrics": {
+    "total_files_processed": 0,
+    "total_time_seconds": 5.036,
+    "average_throughput_items_per_second": 0.0,
+    "current_throughput_items_per_second": 0.0,
+    "average_time_per_file_seconds": 0.0,
+    "batches": 0
+  },
+  "results": []
+}

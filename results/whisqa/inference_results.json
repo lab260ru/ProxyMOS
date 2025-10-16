@@ -1,0 +1,51 @@
+{
+  "metrics": {
+    "total_files_processed": 3,
+    "total_time_seconds": 15.277,
+    "average_throughput_items_per_second": 0.196,
+    "current_throughput_items_per_second": 0.196,
+    "average_time_per_file_seconds": 5.092,
+    "batches": 3
+  },
+  "results": [
+    {
+      "audio_file_path": "audio\\Speaker26_000.wav",
+      "transcript": "",
+      "predictions": {
+        "mos": 0.885975182056427,
+        "quality_score": 0.885975182056427
+      },
+      "batch_info": {
+        "batch_index": 0,
+        "sample_index": 0,
+        "timestamp": "2025-10-16T17:12:02.939325"
+      }
+    },
+    {
+      "audio_file_path": "audio\\Speaker26_001.wav",
+      "transcript": "",
+      "predictions": {
+        "mos": 0.8537730574607849,
+        "quality_score": 0.8537730574607849
+      },
+      "batch_info": {
+        "batch_index": 1,
+        "sample_index": 0,
+        "timestamp": "2025-10-16T17:12:03.029893"
+      }
+    },
+    {
+      "audio_file_path": "audio\\Speaker26_002.wav",
+      "transcript": "",
+      "predictions": {
+        "mos": 0.9497517347335815,
+        "quality_score": 0.9497517347335815
+      },
+      "batch_info": {
+        "batch_index": 2,
+        "sample_index": 0,
+        "timestamp": "2025-10-16T17:12:03.461531"
+      }
+    }
+  ]
+}
