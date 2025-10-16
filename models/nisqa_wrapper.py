@@ -98,21 +98,21 @@ class NISQAWrapper(BaseModelWrapper):
             torch.Tensor: [batch, 5] predictions
                           (MOS, Noisiness, Discontinuity, Coloration, Loudness)
         """
-        batch_size = audio.shape[0]
-        all_scores = []
-        
-        # Process each sample individually (NISQA doesn't support batching natively)
-        for i in range(batch_size):
-            sample = audio[i]
-            
-            with torch.no_grad():
-                # torchmetrics returns [5] tensor
-                scores = self.model(sample)
-            
-            all_scores.append(scores)
-        
-        # Stack results into [batch, 5]
-        return torch.stack(all_scores)
+        # Try batched inference first; fallback to per-sample if unsupported
+        with torch.no_grad():
+            try:
+                scores = self.model(audio)  # expected [B, 5]
+                if scores.dim() == 1:
+                    scores = scores.unsqueeze(0)
+                return scores
+            except Exception:
+                batch_size = audio.shape[0]
+                all_scores = []
+                for i in range(batch_size):
+                    sample = audio[i]
+                    s = self.model(sample)  # [5]
+                    all_scores.append(s)
+                return torch.stack(all_scores)
 
     # ---------------------- POSTPROCESS ----------------------
 

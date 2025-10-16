@@ -37,7 +37,7 @@ class WhiSQAWrapper(BaseModelWrapper):
         if not checkpoint_path:
             raise ValueError("'checkpoint_path' is required in config to load WhiSQA model")
 
-        model_type = self.config.get("model_type", "single")
+        model_type = self.config.get("model_type", "multi")
         print(f"[WhiSQA] 🔄 Loading model type '{model_type}' from {checkpoint_path}")
 
         # Select model architecture

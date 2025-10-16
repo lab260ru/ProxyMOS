@@ -24,9 +24,9 @@ class DNSMOSWrapper(BaseModelWrapper):
         """
         import onnxruntime as ort
 
-        model_path = self.config.get("primary_model_path") or self.config.get("checkpoint_path")
+        model_path = self.config.get("checkpoint_path")
         if not model_path:
-            raise ValueError("Either 'primary_model_path' or 'checkpoint_path' must be provided in config")
+            raise ValueError("'checkpoint_path' must be provided in config")
 
         model_path = Path(model_path)
         if not model_path.exists():
@@ -47,6 +47,21 @@ class DNSMOSWrapper(BaseModelWrapper):
         self.input_info = self.model.get_inputs()[0]
         self.input_name = self.input_info.name
 
+        # Precompute spectrogram transforms (CPU/GPU-agnostic; we run them on CPU by default)
+        self.target_sr = 16000
+        self.n_fft = 320
+        self.hop_length = 160
+        self.n_mels = 161
+        self.target_time_frames = 901
+        self.mel_spec = torchaudio.transforms.MelSpectrogram(
+            sample_rate=self.target_sr,
+            n_fft=self.n_fft,
+            hop_length=self.hop_length,
+            n_mels=self.n_mels,
+            power=2.0
+        )
+        self.amp_to_db = torchaudio.transforms.AmplitudeToDB()
+
         print(f"✅ DNSMOS model loaded: {model_path.name}")
         print(f"Expected input shape: {self.input_info.shape}")
         print("This model expects spectrograms, not raw waveforms!\n")
@@ -55,102 +70,57 @@ class DNSMOSWrapper(BaseModelWrapper):
 
     def preprocess(self, audio_batch: torch.Tensor, sample_rate: int) -> torch.Tensor:
         """
-        Convert raw waveforms into spectrograms expected by DNSMOS.
+        Convert raw waveforms into spectrograms expected by DNSMOS (batched).
 
         Args:
-            audio_batch (torch.Tensor): Input tensor [batch, channels, samples]
-            sample_rate (int): Original audio sample rate
-
+            audio_batch (torch.Tensor): [B, C, T]
+            sample_rate (int): input sample rate
         Returns:
-            torch.Tensor: Spectrograms [batch, time_frames, freq_bins]
+            torch.Tensor: [B, time_frames, freq_bins]
         """
-        # Convert to mono
-        if audio_batch.shape[1] > 1:
-            audio_batch = audio_batch.mean(dim=1, keepdim=True)
+        B, C, T = audio_batch.shape
+        # To mono: [B, T]
+        audio_mono = audio_batch.mean(dim=1)
 
-        # Resample to 16 kHz if needed
-        target_sr = 16000
-        if sample_rate != target_sr:
-            resampler = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=target_sr)
-            audio_batch = resampler(audio_batch)
+        # Resample to target_sr if needed (batched)
+        if sample_rate != self.target_sr:
+            resampler = torchaudio.transforms.Resample(sample_rate, self.target_sr)
+            audio_mono = resampler(audio_mono)
 
-        # Normalize to [-1, 1]
-        max_val = audio_batch.abs().max()
-        audio_batch = audio_batch / (max_val + 1e-9)
+        # Normalize per-sample to [-1, 1]
+        max_vals = audio_mono.abs().amax(dim=1, keepdim=True) + 1e-9
+        audio_mono = audio_mono / max_vals
 
-        # Generate spectrograms
-        spectrograms = []
-        for i in range(audio_batch.shape[0]):
-            audio = audio_batch[i, 0]
-            spectrogram = self._audio_to_spectrogram(audio, target_sr)
-            spectrograms.append(spectrogram)
+        # MelSpectrogram expects [B, T]
+        mel = self.mel_spec(audio_mono)  # [B, n_mels, frames]
+        mel_db = self.amp_to_db(mel)     # [B, n_mels, frames]
+        mel_db = mel_db.transpose(1, 2)  # [B, frames, n_mels]
 
-        spectrograms = torch.stack(spectrograms)
-        return spectrograms.to(self.device)
+        # Pad/trim time dimension to target_time_frames
+        frames = mel_db.shape[1]
+        if frames > self.target_time_frames:
+            mel_db = mel_db[:, :self.target_time_frames, :]
+        elif frames < self.target_time_frames:
+            pad = self.target_time_frames - frames
+            mel_db = torch.nn.functional.pad(mel_db, (0, 0, 0, pad), value=-80.0)
 
-    # ---------------------- AUDIO -> SPECTROGRAM ----------------------
-
-    def _audio_to_spectrogram(self, audio: torch.Tensor, sample_rate: int) -> torch.Tensor:
-        """
-        Convert waveform into log-mel spectrogram.
-
-        Args:
-            audio (torch.Tensor): [samples]
-            sample_rate (int): Sample rate
-
-        Returns:
-            torch.Tensor: [time_frames, freq_bins]
-        """
-        n_fft = 320
-        hop_length = 160
-        n_mels = 161  # slightly below n_freqs (161) to avoid all-zero filters
-
-        # Ensure processing happens on the correct device
-        audio = audio.to(self.device)
-
-        mel_spec = torchaudio.transforms.MelSpectrogram(
-            sample_rate=sample_rate,
-            n_fft=n_fft,
-            hop_length=hop_length,
-            n_mels=n_mels,
-            power=2.0
-        ).to(self.device)
-
-        spec = mel_spec(audio)
-        spec_db = torchaudio.transforms.AmplitudeToDB().to(self.device)(spec)
-        spec_db = spec_db.T  # [time, freq]
-
-        # Adjust to fixed frame length (901)
-        target_time_frames = 901
-        current_frames = spec_db.shape[0]
-        if current_frames > target_time_frames:
-            spec_db = spec_db[:target_time_frames, :]
-        elif current_frames < target_time_frames:
-            pad = target_time_frames - current_frames
-            spec_db = torch.nn.functional.pad(spec_db, (0, 0, 0, pad), mode="constant", value=-80.0)
-
-        return spec_db
+        return mel_db
 
     # ---------------------- INFERENCE ----------------------
 
     def forward(self, spectrograms: torch.Tensor) -> torch.Tensor:
         """
         Run ONNX inference on spectrograms.
-
         Args:
-            spectrograms (torch.Tensor): [batch, time_frames, freq_bins]
-
+            spectrograms (torch.Tensor): [B, time_frames, freq_bins]
         Returns:
-            torch.Tensor: [batch, 3] (ovrl, sig, bak)
+            torch.Tensor: [B, 3] (ovrl, sig, bak)
         """
-        print(f"Running inference on batch: {spectrograms.shape}")
-
-        # Convert to numpy for ONNX runtime
+        # ONNX runtime on CPU/GPU uses numpy arrays
         spectrograms_np = spectrograms.cpu().numpy().astype(np.float32)
-
         try:
             outputs = self.model.run(None, {self.input_name: spectrograms_np})
-            return torch.from_numpy(outputs[0]).to(self.device)
+            return torch.from_numpy(outputs[0])
         except Exception as e:
             print(f"❌ ONNX inference failed: {e}")
             print(f"Input shape: {spectrograms_np.shape}, expected: {self.input_info.shape}")
@@ -159,28 +129,16 @@ class DNSMOSWrapper(BaseModelWrapper):
     # ---------------------- POSTPROCESS ----------------------
 
     def postprocess(self, output: torch.Tensor) -> List[Dict[str, float]]:
-        """
-        Convert model output to MOS metrics.
-
-        Args:
-            output (torch.Tensor): Model predictions [batch, 3]
-
-        Returns:
-            List[Dict[str, float]]: DNSMOS metrics
-        """
         results = []
         for pred in output:
             results.append({
-                "ovrl_score": float(pred[0]),  # Overall quality
-                "sig_score": float(pred[1]),   # Speech signal quality
-                "bak_score": float(pred[2]),   # Background noise quality
-                "mos": float(pred[0])          # MOS alias for ovrl_score
+                "ovrl_score": float(pred[0]),
+                "sig_score": float(pred[1]),
+                "bak_score": float(pred[2]),
+                "mos": float(pred[0])
             })
         return results
 
-    # ---------------------- PROPERTY ----------------------
-
     @property
     def sample_rate(self) -> int:
-        """DNSMOS always expects 16 kHz audio."""
         return 16000
