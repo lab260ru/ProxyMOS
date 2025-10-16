@@ -1,28 +1,32 @@
 # ==========================================================
-#  WhiSQA Inference Configuration
+#  WavLM Inference Configuration
 #  Author: your_name
 #  Description:
-#    Configuration file for running WhiSQA using the WhiSQAWrapper model.
+#    Configuration file for running WavLM MOS using the WavLMMOSWrapper model.
 # ==========================================================
 
 model:
-  name: "whisqa"                 # Must match wrapper class name (WhiSQAWrapper)
+  name: "WavLM"                 # Must match wrapper class name (WavLMMOSWrapper)
   device: "cuda"                # "cuda" or "cpu"
-  checkpoint_path: "multi_head_model.pt"  # path to pretrained WhiSQA checkpoint
+  checkpoint_path: null # path to pretrained WavLM checkpoint
 
-  
+  # Optional model-specific params
+  wavlm:
+    # Add WavLM-specific parameters here if any.
+    # For example, specific model variant, fine-tuning parameters, etc.
+
 # ----------------------------------------------------------
+
 dataset:
   audio_dir: "audio"
   file_extension: ".wav"
   recursive: true
   sample_rate: 16000
-  max_length: 4                    # audio segment length in seconds
-
+  max_length: 4  
 # ----------------------------------------------------------
 inference:
   batch_size: 1                   # batch size
   num_workers: 2                    # number of DataLoader workers
   prefetch_factor: 2                # optional for better throughput
-  output_dir: "./results/whisqa"    # where to save JSON/CSV results
+  output_dir: "./results/wavlm"     # where to save JSON/CSV results
   save_every_n_batches: 1         # how often to save partial results

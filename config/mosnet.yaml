@@ -1,0 +1,23 @@
+model:
+  name: "mosnet"                 # Must match wrapper class name (MOSnet)
+  device: "cuda"                # "cuda" or "cpu"
+  checkpoint_path: "mosnet16_torch.pt"  # path to pretrained NISQA checkpoint
+
+  # Optional model-specific params
+
+# ----------------------------------------------------------
+
+dataset:
+  audio_dir: "audio"
+  file_extension: ".wav"
+  recursive: true
+  sample_rate: 16000
+  max_length: 4                      # audio segment length in seconds
+
+# ----------------------------------------------------------
+inference:
+  batch_size: 1                   # batch size (NISQA supports small batches)
+  num_workers: 2                    # number of DataLoader workers
+  prefetch_factor: 2                # optional for better throughput
+  output_dir: "./results/mosnet"     # where to save JSON/CSV results
+  save_every_n_batches: 1    

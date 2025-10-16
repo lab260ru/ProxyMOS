@@ -1,28 +1,32 @@
 # ==========================================================
-#  WhiSQA Inference Configuration
+#  ReazonSpeech Inference Configuration
 #  Author: your_name
 #  Description:
-#    Configuration file for running WhiSQA using the WhiSQAWrapper model.
+#    Configuration file for running ReazonSpeech MOS using the ReazonSpeechMOSWrapperr model.
 # ==========================================================
 
 model:
-  name: "whisqa"                 # Must match wrapper class name (WhiSQAWrapper)
+  name: "reazonspeech"         # Must match wrapper class name (ReazonSpeechMOSWrapperr)
   device: "cuda"                # "cuda" or "cpu"
-  checkpoint_path: "multi_head_model.pt"  # path to pretrained WhiSQA checkpoint
+  checkpoint_path: null  # ReazonSpeech might use a pre-trained model internally or a specific path
 
-  
+  # Optional model-specific params
+  reazonspeech:
+    # Add ReazonSpeech-specific parameters here if any.
+    # For example, specific model variant, language, etc.
+
 # ----------------------------------------------------------
 dataset:
   audio_dir: "audio"
   file_extension: ".wav"
   recursive: true
   sample_rate: 16000
-  max_length: 4                    # audio segment length in seconds
+  max_length: 4                     # audio segment length in seconds
 
 # ----------------------------------------------------------
 inference:
   batch_size: 1                   # batch size
   num_workers: 2                    # number of DataLoader workers
   prefetch_factor: 2                # optional for better throughput
-  output_dir: "./results/whisqa"    # where to save JSON/CSV results
+  output_dir: "./results/reazonspeech" # where to save JSON/CSV results
   save_every_n_batches: 1         # how often to save partial results

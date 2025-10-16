@@ -6,37 +6,22 @@ model:
   device: "cuda"  # or "cpu"
   checkpoint_path: "bak_ovr.onnx" 
   
-  # DNSMOS specific configuration
-  dnsmos:
-    sample_rate: 16000
+
     
 
-# Dataset configuration
 dataset:
-  manifest: [
-    {
-      "audio_path": "../Speaker26_000.wav",
-      "transcript": "Test audio file for quality assessment"
-    },
-    {
-      "audio_path": "../Speaker26_001.wav",
-      "transcript": "Test audio file for quality assessment"
-    },
-    {
-      "audio_path": "../Speaker26_002.wav",
-      "transcript": "Test audio file for quality assessment"
-    }
-  ]
+  audio_dir: "audio"
+  file_extension: ".wav"
+  recursive: true
   sample_rate: 16000
-  file_format: ".wav"
-  time_length: 60.0
-  max_length: 60.0
+  max_length: 4                    # audio segment length in seconds
+
 
 # Inference configuration
 inference:
   batch_size: 1
   num_workers: 0
-  output_dir: "dnsmos_results"
+  output_dir: "./results/dnsmos"
   save_every_n_batches: 1
   prefetch_factor: 2
   experiment_name: "dnsmos_test"

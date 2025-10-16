@@ -1,0 +1,34 @@
+# ==========================================================
+#  Wav2Vec2 Inference Configuration
+#  Author: your_name
+#  Description:
+#    Configuration file for running Wav2Vec2 MOS using the TorchAudioSSLMOSWrapper model.
+# ==========================================================
+
+model:
+  name: "wav2vec2"             # Must match wrapper class name (TorchAudioSSLMOSWrapper)
+  device: "cuda"                # "cuda" or "cpu"
+  checkpoint_path: null  # For pre-trained models from torchaudio, checkpoint might not be a file path
+
+  # Optional model-specific params
+  torchaudiosslmos:
+    model_type: "wav2vec2"      # Specify the SSL model type (e.g., wav2vec2, hubert)
+    # Add other TorchAudioSSLMOSWrapper specific parameters here if any.
+    # For example, bundle name, fine-tuning parameters, etc.
+
+# ----------------------------------------------------------
+
+dataset:
+  audio_dir: "audio"
+  file_extension: ".wav"
+  recursive: true
+  sample_rate: 16000
+  max_length: 4                      # audio segment length in seconds
+
+# ----------------------------------------------------------
+inference:
+  batch_size: 1                   # batch size
+  num_workers: 2                    # number of DataLoader workers
+  prefetch_factor: 2                # optional for better throughput
+  output_dir: "./results/wav2vec2"  # where to save JSON/CSV results
+  save_every_n_batches: 1         # how often to save partial results
