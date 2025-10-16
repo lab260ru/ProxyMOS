@@ -21,6 +21,14 @@ MODEL_REGISTRY = {
     "nisqa": ("models.nisqa_wrapper", "NISQAWrapper"),
     "dnsmos": ("models.dnsmos_wrapper", "DNSMOSWrapper"),
     "whisqa": ("models.whisqa_wrapper", "WhiSQAWrapper"),
+    "mosnet": ("models.mosnet_wrapper", "MosNetWrapper"),
+    "squim": ("models.squim_wrapper", "SquimWrapper"),
+    "WavLM": ("models.WavLM_wrapper", "WavLMMOSWrapper"),
+    "wav2vec2": ("models.TorchAudioSSLMOS_wrapper", "TorchAudioSSLMOSWrapper"),
+    "hubert": ("models.TorchAudioSSLMOS_wrapper", "TorchAudioSSLMOSWrapper"),
+    "reazonspeech": ("models.reazonspeechmos_wrapper", "ReazonSpeechMOSWrapper"),
+    "cdpam": ("models.cdpam_wrapper", "CDPAMWrapper"),
+    "srmr": ("models.srmr_wrapper", "SRMRWrapper"),
 }
 
 
@@ -54,7 +62,6 @@ def get_model_wrapper(model_name: str, config: Dict[str, Any], device: str = "cu
         raise ImportError(f"Failed to import {module_name}: {e}")
     except AttributeError as e:
         raise AttributeError(f"Class {class_name} not found in {module_name}: {e}")
-
 
 
 # Configuration utilities
