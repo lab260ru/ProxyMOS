@@ -21,7 +21,7 @@ class AudioDataset(Dataset):
         audio_dir: Optional[str] = None,
         sample_rate: int = 16000,
         file_format: str = '.wav',
-        time_length: Optional[float] = 4,
+        time_length: Optional[float]= None,
         audio_transform: Optional[Callable] = None,
         text_transform: Optional[Callable] = None,
         text_key: str = 'transcript',

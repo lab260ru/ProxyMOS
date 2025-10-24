@@ -51,7 +51,7 @@ def main():
             audio_dir=config['dataset'].get('audio_dir'),
             sample_rate=config['dataset'].get('sample_rate', 16000),
             file_format=config['dataset'].get('file_extension', '.wav'),
-            time_length=config['dataset'].get('max_length', 4),
+            time_length=config['dataset'].get('max_length', None),
             recursive=config['dataset'].get('recursive', True)
         )
         console.print(f"[green]✅ Loaded {len(dataset)} audio files[/green]\n")

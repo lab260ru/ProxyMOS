@@ -10,6 +10,7 @@ from datetime import datetime
 import threading
 from queue import Queue
 import traceback # Импортируем traceback
+import csv
 
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeElapsedColumn, MofNCompleteColumn
@@ -66,6 +67,7 @@ class InferenceEngine:
         
         # File paths (only JSON report)
         self.json_output_file = self.output_dir / f"{experiment_name}_results.json"
+        self.csv_output_file = self.output_dir / f"{experiment_name}_results.csv"
         
     def run(self) -> List[Dict[str, Any]]:
         self.start_time = time.time()
@@ -142,17 +144,24 @@ class InferenceEngine:
         predictions = self.model_wrapper.predict(waveforms)
         
         batch_results: List[Dict[str, Any]] = []
+        # Duration in seconds for each item (after any trimming/padding)
+        sample_rate = getattr(self.model_wrapper, "sample_rate", None)
+        item_duration_sec: Optional[float] = None
+        if sample_rate:
+            # waveforms shape is [B, C, T]
+            item_duration_sec = float(waveforms.shape[2]) / float(sample_rate)
+
         for i, (audio_path, transcript, pred) in enumerate(zip(audio_paths, transcripts, predictions)):
             result = {
                 "audio_file_path": audio_path,
-                "transcript": transcript,
                 "predictions": pred,
                 "batch_info": {
                     "batch_index": batch_idx,
-                    "sample_index": i,
-                    "timestamp": datetime.now().isoformat()
+                    "sample_index": i
                 }
             }
+            if item_duration_sec is not None:
+                result["duration_seconds"] = item_duration_sec
             batch_results.append(result)
         
         return batch_results
@@ -164,12 +173,21 @@ class InferenceEngine:
         avg_throughput = total_items / elapsed_time if elapsed_time > 0 else 0.0
         avg_time_per_item = (elapsed_time / total_items) if total_items > 0 else 0.0
         last_throughput = self.throughput_history[-1] if self.throughput_history else 0.0
+        # Compute global RTF = total processing time / total audio duration
+        total_audio_seconds = 0.0
+        for r in self.results:
+            dur = r.get("duration_seconds")
+            if isinstance(dur, (int, float)):
+                total_audio_seconds += float(dur)
+        average_rtf = (elapsed_time / total_audio_seconds) if total_audio_seconds > 0 else 0.0
         return {
             "total_files_processed": total_items,
             "total_time_seconds": round(elapsed_time, 3),
             "average_throughput_items_per_second": round(avg_throughput, 3),
             "current_throughput_items_per_second": round(last_throughput, 3),
             "average_time_per_file_seconds": round(avg_time_per_item, 3),
+            "average_rtf": round(average_rtf, 4),
+            "total_audio_seconds": round(total_audio_seconds, 3),
             "batches": len(self.batch_times),
         }
     
@@ -184,7 +202,9 @@ class InferenceEngine:
             asyncio.run(self._async_save_json(payload))
         else:
             self._save_json(payload)
-        console.print(f"[green]💾 Saved {metrics['total_files_processed']} results to {self.json_output_file}[/green]")
+        # Save/update CSV alongside JSON
+        self._save_csv()
+        console.print(f"[green]💾 Saved {metrics['total_files_processed']} results to {self.json_output_file} and {self.csv_output_file}[/green]")
     
     def _save_json(self, payload: Dict[str, Any]):
         with open(self.json_output_file, 'w', encoding='utf-8') as f:
@@ -193,6 +213,32 @@ class InferenceEngine:
     async def _async_save_json(self, payload: Dict[str, Any]):
         async with aiofiles.open(self.json_output_file, 'w', encoding='utf-8') as f:
             await f.write(json.dumps(payload, indent=2, ensure_ascii=False))
+
+    def _save_csv(self):
+        """Save per-file metrics to CSV: columns = audio_file_path + metric keys."""
+        # Determine union of prediction keys across all results
+        metric_keys: List[str] = []
+        seen = set()
+        for r in self.results:
+            preds = r.get("predictions", {}) or {}
+            if isinstance(preds, dict):
+                for k in preds.keys():
+                    if k not in seen:
+                        seen.add(k)
+                        metric_keys.append(k)
+        # Stable order
+        metric_keys.sort()
+        header = ["audio_file_path"] + metric_keys
+        # Write CSV
+        with open(self.csv_output_file, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow(header)
+            for r in self.results:
+                row = [r.get("audio_file_path", "")] 
+                preds = r.get("predictions", {}) or {}
+                for k in metric_keys:
+                    row.append(preds.get(k, ""))
+                writer.writerow(row)
     
     def _display_completion_summary(self):
         if not self.start_time:
@@ -211,12 +257,16 @@ class InferenceEngine:
         summary_table.add_row("Total Time", f"{elapsed_time:.2f} seconds")
         summary_table.add_row("Average Throughput", f"{avg_throughput:.2f} items/sec")
         summary_table.add_row("Average Time per File", f"{avg_time_per_item:.3f} seconds")
+        # Also print RTF if durations were available
+        total_audio_seconds = sum(float(r.get("duration_seconds", 0.0)) for r in self.results)
+        average_rtf = (elapsed_time / total_audio_seconds) if total_audio_seconds > 0 else 0.0
+        summary_table.add_row("Average RTF", f"{average_rtf:.4f}")
         
         console.print(summary_table)
         console.print()
         
         files_panel = Panel.fit(
-            f"📄 JSON Results: [cyan]{self.json_output_file}[/cyan]",
+            f"📄 JSON Results: [cyan]{self.json_output_file}[/cyan]\n📄 CSV Results:  [cyan]{self.csv_output_file}[/cyan]",
             title="Output Files",
             border_style="green"
         )

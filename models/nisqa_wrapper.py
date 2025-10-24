@@ -35,6 +35,7 @@ class NISQAWrapper(BaseModelWrapper):
             
             self.model = NonIntrusiveSpeechQualityAssessment(fs=16000)
             self.model.to(self.device)
+            self.model.eval() 
             
             print(f"✅ NISQA model loaded via torchmetrics")
             print(f"⚙️ Device: {self.device}")
@@ -86,7 +87,7 @@ class NISQAWrapper(BaseModelWrapper):
         return audio_batch.to(self.device)
 
     # ---------------------- INFERENCE ----------------------
-
+    @torch.inference_mode()
     def forward(self, audio: torch.Tensor) -> torch.Tensor:
         """
         Run NISQA model inference.
@@ -98,21 +99,19 @@ class NISQAWrapper(BaseModelWrapper):
             torch.Tensor: [batch, 5] predictions
                           (MOS, Noisiness, Discontinuity, Coloration, Loudness)
         """
-        # Try batched inference first; fallback to per-sample if unsupported
-        with torch.no_grad():
-            try:
-                scores = self.model(audio)  # expected [B, 5]
-                if scores.dim() == 1:
-                    scores = scores.unsqueeze(0)
-                return scores
-            except Exception:
-                batch_size = audio.shape[0]
-                all_scores = []
-                for i in range(batch_size):
-                    sample = audio[i]
-                    s = self.model(sample)  # [5]
-                    all_scores.append(s)
-                return torch.stack(all_scores)
+        try:
+            scores = self.model(audio)  # expected [B, 5]
+            if scores.dim() == 1:
+                scores = scores.unsqueeze(0)
+            return scores
+        except Exception:
+            batch_size = audio.shape[0]
+            all_scores = []
+            for i in range(batch_size):
+                sample = audio[i]
+                s = self.model(sample)  # [5]
+                all_scores.append(s)
+            return torch.stack(all_scores)
 
     # ---------------------- POSTPROCESS ----------------------
 

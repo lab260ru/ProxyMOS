@@ -7,13 +7,10 @@
 # ==========================================================
 
 model:
-  name: "nisqa"                 # Must match wrapper class name (NISQAWrapper)
-  device: "cuda"                # "cuda" or "cpu"
-  checkpoint_path: "./checkpoints/nisqa/NISQA_TL_model.pt"  # path to pretrained NISQA checkpoint
+  name: "utmos"                
+  device: "cuda"                # "cuda" or "cpu" # path 
 
-  # Optional model-specific params
-  nisqa:
-    checkpoint_path: "./checkpoints/nisqa/NISQA_TL_model.pt"
+
 
 # ----------------------------------------------------------
 
@@ -21,15 +18,11 @@ dataset:
   audio_dir: "audio"
   file_extension: ".wav"
   recursive: true
-  sample_rate: 16000    
-  max_length: 15              # audio segment length in seconds
-
+  sample_rate: 16000
 # ----------------------------------------------------------
 inference:
   batch_size: 1                   # batch size (NISQA supports small batches)
   num_workers: 2                    # number of DataLoader workers
   prefetch_factor: 2                # optional for better throughput
-  output_dir: "./results/nisqa"     # where to save JSON/CSV results
-  save_every_n_batches: 1         # how often to save partial results
-
-
+  output_dir: "./results/utmos"     # where to save JSON/CSV results
+  save_every_n_batches: 1  
