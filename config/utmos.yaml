@@ -8,7 +8,8 @@
 
 model:
   name: "utmos"                
-  device: "cuda"                # "cuda" or "cpu" # path 
+  device: "cuda"   
+  checkpoint_path: 'epoch3D7459.ckpt'        # "cuda" or "cpu" # path 
 
 
 
