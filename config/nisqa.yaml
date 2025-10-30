@@ -14,6 +14,7 @@ model:
   # Optional model-specific params
   nisqa:
     checkpoint_path: "./checkpoints/nisqa/NISQA_TL_model.pt"
+    segment_seed: 12345
 
 # ----------------------------------------------------------
 
@@ -22,7 +23,7 @@ dataset:
   file_extension: ".wav"
   recursive: true
   sample_rate: 16000    
-  max_length: 15              # audio segment length in seconds
+  max_length: 10           # audio segment length in seconds
 
 # ----------------------------------------------------------
 inference:

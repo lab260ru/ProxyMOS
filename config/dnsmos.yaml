@@ -5,6 +5,7 @@ model:
   name: "dnsmos"
   device: "cuda"  # or "cpu"
   checkpoint_path: "bak_ovr.onnx" 
+  segment_seed: 12345
   
 
     
@@ -13,7 +14,8 @@ dataset:
   audio_dir: "audio"
   file_extension: ".wav"
   recursive: true
-  sample_rate: 16000                  # audio segment length in seconds
+  sample_rate: 16000
+  max_length: 10                   # audio segment length in seconds
 
 
 # Inference configuration

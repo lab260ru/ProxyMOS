@@ -5,6 +5,7 @@ import numpy as np
 from typing import Dict, List
 from pathlib import Path
 from .base_model import BaseModelWrapper
+from .audio_utils import select_deterministic_window_batch
 
 
 class NISQAWrapper(BaseModelWrapper):
@@ -35,7 +36,14 @@ class NISQAWrapper(BaseModelWrapper):
             
             self.model = NonIntrusiveSpeechQualityAssessment(fs=16000)
             self.model.to(self.device)
+            if self.device == "cuda":
+                enable_tf32 = self.config.get("enable_tf32", False)
+                if enable_tf32:
+                    torch.backends.cuda.matmul.allow_tf32 = True
+                    torch.backends.cudnn.allow_tf32 = True
+                    print("⚡ TF32 enabled for matmul operations")
             self.model.eval() 
+            
             
             print(f"✅ NISQA model loaded via torchmetrics")
             print(f"⚙️ Device: {self.device}")
@@ -80,6 +88,20 @@ class NISQAWrapper(BaseModelWrapper):
             ).to(self.device)
             audio_batch = resampler(audio_batch)
         
+        # Optional deterministic 10s windowing (default True)
+        segment_seconds = float(self.config.get("segment_seconds", 10.0))
+        deterministic = bool(self.config.get("deterministic_segment", True))
+        segment_seed = self.config.get("segment_seed")
+        # Select window before normalization to keep scale consistent across segments
+        audio_batch = select_deterministic_window_batch(
+            audio_batch=audio_batch,
+            sample_rate=target_sr,
+            window_seconds=segment_seconds,
+            deterministic=deterministic,
+            seed=segment_seed,
+            pad_mode="repeat",
+        )
+
         # Normalize to [-1, 1]
         max_val = audio_batch.abs().max(dim=-1, keepdim=True)[0]
         audio_batch = audio_batch / (max_val + 1e-9)

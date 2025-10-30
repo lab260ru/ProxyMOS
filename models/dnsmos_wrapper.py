@@ -5,6 +5,7 @@ import numpy as np
 from typing import Dict, List
 from pathlib import Path
 from .base_model import BaseModelWrapper
+from .audio_utils import select_deterministic_window_batch
 
 
 class DNSMOSWrapper(BaseModelWrapper):
@@ -36,14 +37,20 @@ class DNSMOSWrapper(BaseModelWrapper):
         device = self.config.get("device", "cpu").lower()
         if device == "cuda" and torch.cuda.is_available():
             providers = ["CUDAExecutionProvider"]
+            torch.backends.cuda.matmul.allow_tf32 = True
+            torch.backends.cudnn.allow_tf32 = True
             print("⚙️ Using GPU (CUDAExecutionProvider) for ONNX Runtime")
         else:
             providers = ["CPUExecutionProvider"]
             device = "cpu"
             print("⚙️ Using CPUExecutionProvider for ONNX Runtime")
+            
+        
 
         self.device = device
         self.model = ort.InferenceSession(str(model_path), providers=providers)
+        self.sess_options = ort.SessionOptions()
+        self.sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
         self.input_info = self.model.get_inputs()[0]
         self.input_name = self.input_info.name
 
@@ -86,6 +93,20 @@ class DNSMOSWrapper(BaseModelWrapper):
         if sample_rate != self.target_sr:
             resampler = torchaudio.transforms.Resample(sample_rate, self.target_sr)
             audio_mono = resampler(audio_mono)
+
+        # Optional: align to the same deterministic window as NISQA for comparability
+        if bool(self.config.get("align_segment_with_nisqa", True)):
+            segment_seconds = float(self.config.get("segment_seconds", 10.0))
+            deterministic = bool(self.config.get("deterministic_segment", True))
+            segment_seed = self.config.get("segment_seed")
+            audio_mono = select_deterministic_window_batch(
+                audio_batch=audio_mono,
+                sample_rate=self.target_sr,
+                window_seconds=segment_seconds,
+                deterministic=deterministic,
+                seed=segment_seed,
+                pad_mode="repeat",
+            )
 
         # Normalize per-sample to [-1, 1]
         max_vals = audio_mono.abs().amax(dim=1, keepdim=True) + 1e-9
