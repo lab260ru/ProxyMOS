@@ -88,7 +88,9 @@ def main():
             output_dir=config['inference']['output_dir'],
             save_every_n_batches=config['inference'].get('save_every_n_batches', 10),
             experiment_name=args.experiment_name,
-            async_save=not args.no_async_save
+            async_save=not args.no_async_save,
+            resume=bool(config['inference'].get('resume', False)),
+            append_results=bool(config['inference'].get('append_results', True))
         )
         
         # Run inference

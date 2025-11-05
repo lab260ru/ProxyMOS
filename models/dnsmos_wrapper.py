@@ -54,7 +54,7 @@ class DNSMOSWrapper(BaseModelWrapper):
         self.input_info = self.model.get_inputs()[0]
         self.input_name = self.input_info.name
 
-        # Precompute spectrogram transforms (CPU/GPU-agnostic; we run them on CPU by default)
+
         self.target_sr = 16000
         self.n_fft = 320
         self.hop_length = 160

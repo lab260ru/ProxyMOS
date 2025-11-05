@@ -3,7 +3,7 @@ import json
 import asyncio
 import aiofiles
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Set
 from torch.utils.data import DataLoader
 import time
 from datetime import datetime
@@ -43,7 +43,9 @@ class InferenceEngine:
         output_dir: str,
         save_every_n_batches: int = 1,  # Save after each batch by default
         experiment_name: str = "inference",
-        async_save: bool = True
+        async_save: bool = True,
+        resume: bool = False,
+        append_results: bool = True
     ):
         self.model_wrapper = model_wrapper
         self.dataloader = dataloader
@@ -57,6 +59,7 @@ class InferenceEngine:
         
         # Results storage and tracking
         self.results: List[Dict[str, Any]] = []
+        self.processed_paths: Set[str] = set()
         self.batch_count = 0
         self.total_processed = 0  # elements processed
         self.start_time: Optional[float] = None
@@ -68,6 +71,12 @@ class InferenceEngine:
         # File paths (only JSON report)
         self.json_output_file = self.output_dir / f"{experiment_name}_results.json"
         self.csv_output_file = self.output_dir / f"{experiment_name}_results.csv"
+        self.resume = resume
+        self.append_results = append_results
+
+        # Load existing results if resume enabled
+        if self.resume:
+            self._try_load_existing_results()
         
     def run(self) -> List[Dict[str, Any]]:
         self.start_time = time.time()
@@ -99,8 +108,27 @@ class InferenceEngine:
             for batch_idx, batch in enumerate(self.dataloader):
                 batch_start_time = time.time()
                 try:
+                    # On resume: filter out already processed items by audio_file_path
+                    if self.resume and isinstance(batch.get("audio_path"), list):
+                        keep_indices = [i for i, p in enumerate(batch["audio_path"]) if p not in self.processed_paths]
+                        if len(keep_indices) != len(batch["audio_path"]):
+                            # Rebuild batch with only remaining items
+                            if len(keep_indices) == 0:
+                                # Nothing to do this batch
+                                continue
+                            batch = {
+                                **batch,
+                                "audio_path": [batch["audio_path"][i] for i in keep_indices],
+                                "waveform": batch["waveform"][keep_indices]
+                            }
+
                     batch_results = self._process_batch(batch, batch_idx)
                     self.results.extend(batch_results)
+                    # Update processed set
+                    for r in batch_results:
+                        p = r.get("audio_file_path")
+                        if isinstance(p, str):
+                            self.processed_paths.add(p)
                     
                     batch_time = time.time() - batch_start_time
                     self.batch_times.append(batch_time)
@@ -155,10 +183,6 @@ class InferenceEngine:
             result = {
                 "audio_file_path": audio_path,
                 "predictions": pred,
-                "batch_info": {
-                    "batch_index": batch_idx,
-                    "sample_index": i
-                }
             }
             if item_duration_sec is not None:
                 result["duration_seconds"] = item_duration_sec
@@ -196,7 +220,6 @@ class InferenceEngine:
         metrics = self._build_metrics()
         payload = {
             "metrics": metrics,
-            "results": self.results,
         }
         if self.async_save:
             asyncio.run(self._async_save_json(payload))
@@ -271,6 +294,48 @@ class InferenceEngine:
             border_style="green"
         )
         console.print(files_panel)
+
+    def _try_load_existing_results(self) -> None:
+        """Load existing results (JSON preferred, CSV fallback) to resume processing.
+        If JSON exists but contains 0 results, additionally load processed paths from CSV.
+        """
+        try:
+            if self.json_output_file.exists():
+                with open(self.json_output_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    existing = data.get("results", [])
+                    if isinstance(existing, list):
+                        self.results.extend(existing)
+                        for r in existing:
+                            p = r.get("audio_file_path")
+                            if isinstance(p, str):
+                                self.processed_paths.add(p)
+                console.print(f"[yellow]↻ Resume: loaded {len(self.results)} existing results from JSON[/yellow]")
+                # If JSON has no results, also scan CSV for processed paths
+                if len(self.results) == 0 and self.csv_output_file.exists():
+                    with open(self.csv_output_file, newline="", encoding="utf-8") as f:
+                        reader = csv.reader(f)
+                        header = next(reader, None)
+                        path_idx = 0
+                        if header and "audio_file_path" in header:
+                            path_idx = header.index("audio_file_path")
+                        for row in reader:
+                            if len(row) > path_idx:
+                                self.processed_paths.add(row[path_idx])
+                    console.print(f"[yellow]↻ Resume: detected {len(self.processed_paths)} processed items from CSV (fallback)[/yellow]")
+            elif self.csv_output_file.exists():
+                with open(self.csv_output_file, newline="", encoding="utf-8") as f:
+                    reader = csv.reader(f)
+                    header = next(reader, None)
+                    path_idx = 0
+                    if header and "audio_file_path" in header:
+                        path_idx = header.index("audio_file_path")
+                    for row in reader:
+                        if len(row) > path_idx:
+                            self.processed_paths.add(row[path_idx])
+                console.print(f"[yellow]↻ Resume: detected {len(self.processed_paths)} processed items from CSV[/yellow]")
+        except Exception as e:
+            console.print(f"[red]Resume load failed: {e}[/red]")
 
 
 def create_optimized_dataloader(

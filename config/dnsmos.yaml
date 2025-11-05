@@ -20,9 +20,11 @@ dataset:
 
 # Inference configuration
 inference:
-  batch_size: 1
+  batch_size: 3
   num_workers: 0
   output_dir: "./results/dnsmos"
   save_every_n_batches: 1
   prefetch_factor: 2
+  resume: true
+  append_results: true
   experiment_name: "dnsmos_test"

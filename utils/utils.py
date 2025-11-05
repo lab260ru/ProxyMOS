@@ -121,6 +121,14 @@ def merge_config_with_args(config: Dict[str, Any], args: argparse.Namespace) -> 
     if hasattr(args, 'num_workers') and args.num_workers is not None:
         config['inference']['num_workers'] = args.num_workers
     
+    # Resume / append flags
+    if 'inference' not in config:
+        config['inference'] = {}
+    if hasattr(args, 'resume') and args.resume is not None:
+        config['inference']['resume'] = bool(args.resume)
+    if hasattr(args, 'append_results') and args.append_results is not None:
+        config['inference']['append_results'] = bool(args.append_results)
+    
     # Override model parameters
     if hasattr(args, 'device') and args.device:
         config['model']['device'] = args.device
@@ -195,6 +203,17 @@ def create_argument_parser() -> argparse.ArgumentParser:
         "--no_async_save",
         action="store_true",
         help="Disable asynchronous saving"
+    )
+    
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Resume: load existing results and skip already processed files"
+    )
+    parser.add_argument(
+        "--append_results",
+        action="store_true",
+        help="Append results semantics (kept for compatibility; JSON/CSV will be rewritten from merged memory)"
     )
     
     return parser
