@@ -9,11 +9,11 @@
 model:
   name: "nisqa"                 # Must match wrapper class name (NISQAWrapper)
   device: "cuda"                # "cuda" or "cpu"
-  checkpoint_path: "./checkpoints/nisqa/NISQA_TL_model.pt"  # path to pretrained NISQA checkpoint
+  checkpoint_path: "nisqa_s.tar"
+  config_path: "nisqa_s_np.yaml"
 
   # Optional model-specific params
   nisqa:
-    checkpoint_path: "./checkpoints/nisqa/NISQA_TL_model.pt"
     segment_seed: 12345
 
 # ----------------------------------------------------------
