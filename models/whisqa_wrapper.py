@@ -4,7 +4,10 @@ import torchaudio
 from typing import Dict, List
 from .base_model import BaseModelWrapper
 
-
+torch.backends.cuda.matmul.allow_tf32 = True 
+torch.backends.cuda.enable_flash_sdp(True)
+torch.backends.cuda.enable_mem_efficient_sdp(True)
+torch.backends.cuda.enable_math_sdp(False)
 class WhiSQAWrapper(BaseModelWrapper):
     """
     Wrapper for WhiSQA (Whisper-based Speech Quality Assessment).
@@ -103,7 +106,7 @@ class WhiSQAWrapper(BaseModelWrapper):
         return audio_batch
 
     # ---------------------- INFERENCE ----------------------
-
+    @torch.inference_mode()
     def forward(self, audio: torch.Tensor) -> torch.Tensor:
         """
         Run WhiSQA model inference.
@@ -117,8 +120,7 @@ class WhiSQAWrapper(BaseModelWrapper):
         # Remove channel dimension: [batch, samples]
         audio_2d = audio.squeeze(1)
 
-        with torch.no_grad():
-            outputs = self.model(audio_2d)
+        outputs = self.model(audio_2d)
 
         # Handle different output formats
         if isinstance(outputs, dict):
@@ -152,8 +154,7 @@ class WhiSQAWrapper(BaseModelWrapper):
         for pred in output.cpu():
             mos_value = float(pred[0])
             results.append({
-                "mos": mos_value,
-                "quality_score": mos_value
+                "mos": mos_value
             })
         return results
 

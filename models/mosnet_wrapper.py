@@ -6,6 +6,11 @@ from pathlib import Path
 from .base_model import BaseModelWrapper
 from .mosnet import MOSNet
 
+torch.backends.cuda.matmul.allow_tf32 = True 
+torch.backends.cuda.enable_flash_sdp(True)
+torch.backends.cuda.enable_mem_efficient_sdp(True)
+torch.backends.cuda.enable_math_sdp(False)
+
 class MosNetWrapper(BaseModelWrapper):
     
     
@@ -68,7 +73,7 @@ class MosNetWrapper(BaseModelWrapper):
         
         return audio_batch.to(self.device)
         
-        
+    @torch.inference_mode()
     def forward(self, audio: torch.Tensor) -> Dict[str, torch.Tensor]:
         """
         Run MOSNet model inference.
@@ -89,9 +94,8 @@ class MosNetWrapper(BaseModelWrapper):
         for i in range(batch_size):
             sample = audio[i].unsqueeze(0)  # [1, samples]
             
-            with torch.no_grad():
                 # MOSNet returns (average_mos, per_frame_mos)
-                mos_avg, mos_frames = self.mos_model(sample)
+            mos_avg, mos_frames = self.mos_model(sample)
             
             all_mos_avg.append(mos_avg)
             all_mos_frames.append(mos_frames)

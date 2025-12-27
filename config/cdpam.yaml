@@ -3,10 +3,9 @@
 # ==========================================================
 
 model:
-  name: "cdpam"
+  name: "xls"
   device: "cuda"
-  checkpoint_path: null
-  cdpam: {}
+
 
 # ----------------------------------------------------------
 dataset:
@@ -14,12 +13,11 @@ dataset:
   file_extension: ".wav"
   recursive: true
   sample_rate: 16000
-  max_length: 4
 
 # ----------------------------------------------------------
 inference:
   batch_size: 4
   num_workers: 2
   prefetch_factor: 2
-  output_dir: "./results/cdpam"
+  output_dir: "./results/XLS"
   save_every_n_batches: 1

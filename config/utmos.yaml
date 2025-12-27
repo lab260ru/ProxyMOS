@@ -9,7 +9,8 @@
 model:
   name: "utmos"                
   device: "cuda"   
-  checkpoint_path: 'epoch3D7459.ckpt'        # "cuda" or "cpu" # path 
+  checkpoint_path: 'epoch3D7459.ckpt'  # Path to UTMOS Lightning checkpoint
+  ssl_model_path: 'wav2vec_small.pt'   # Path to SSL model checkpoint (wav2vec_small.pt, w2v_large_lv_fsh_swbd_cv.pt, or xlsr_53_56k.pt) 
 
 
 

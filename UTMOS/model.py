@@ -5,30 +5,70 @@ import os
 import hydra
 
 def load_ssl_model(cp_path):
-    ssl_model_type = cp_path.split("/")[-1]
-    wavlm =  "WavLM" in ssl_model_type
+    """Load SSL model checkpoint for feature extraction.
+    
+    Args:
+        cp_path: Path to the checkpoint file (e.g., 'wav2vec_small.pt')
+        
+    Returns:
+        SSL_model: The loaded SSL model wrapped in SSL_model class
+    """
+    from pathlib import Path
+    
+    # Convert to Path for easier handling
+    cp_path_obj = Path(cp_path)
+    
+    # Verify file exists
+    if not cp_path_obj.exists():
+        raise FileNotFoundError(
+            f"SSL model checkpoint not found: {cp_path}\n"
+            f"Please ensure the checkpoint file exists and the path is correct."
+        )
+    
+    # Check if file is empty or invalid
+    if cp_path_obj.stat().st_size == 0:
+        raise ValueError(f"SSL model checkpoint file is empty: {cp_path}")
+    
+    ssl_model_type = cp_path_obj.name
+    wavlm = "WavLM" in ssl_model_type
+    
     if wavlm:
-        checkpoint = torch.load(cp_path)
-        cfg = WavLMConfig(checkpoint['cfg'])
-        ssl_model = WavLM(cfg)
-        ssl_model.load_state_dict(checkpoint['model'])
-        if 'Large' in ssl_model_type:
-            SSL_OUT_DIM = 1024
-        else:
-            SSL_OUT_DIM = 768
+        try:
+            checkpoint = torch.load(cp_path, map_location='cpu')
+            cfg = WavLMConfig(checkpoint['cfg'])
+            ssl_model = WavLM(cfg)
+            ssl_model.load_state_dict(checkpoint['model'])
+            if 'Large' in ssl_model_type:
+                SSL_OUT_DIM = 1024
+            else:
+                SSL_OUT_DIM = 768
+        except Exception as e:
+            raise RuntimeError(f"Failed to load WavLM checkpoint from {cp_path}: {e}")
     else:
         if ssl_model_type == "wav2vec_small.pt":
             SSL_OUT_DIM = 768
         elif ssl_model_type in ["w2v_large_lv_fsh_swbd_cv.pt", "xlsr_53_56k.pt"]:
             SSL_OUT_DIM = 1024
         else:
-            print("*** ERROR *** SSL model type " + ssl_model_type + " not supported.")
-            exit()
-        model, cfg, task = fairseq.checkpoint_utils.load_model_ensemble_and_task(
-            [cp_path]
-        )
-        ssl_model = model[0]
-        ssl_model.remove_pretraining_modules()
+            raise ValueError(f"SSL model type '{ssl_model_type}' not supported. "
+                           f"Supported types: wav2vec_small.pt, w2v_large_lv_fsh_swbd_cv.pt, xlsr_53_56k.pt")
+        
+        try:
+            model, cfg, task = fairseq.checkpoint_utils.load_model_ensemble_and_task(
+                [str(cp_path_obj)]
+            )
+            ssl_model = model[0]
+            ssl_model.remove_pretraining_modules()
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to load fairseq checkpoint from {cp_path}: {e}\n"
+                f"This might indicate:\n"
+                f"  1. The file is corrupted or not a valid checkpoint\n"
+                f"  2. The file path is incorrect\n"
+                f"  3. The file is in an incompatible format\n"
+                f"Please verify the checkpoint file is valid."
+            )
+    
     return SSL_model(ssl_model, SSL_OUT_DIM, wavlm)
 
 class SSL_model(nn.Module):

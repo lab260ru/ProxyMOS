@@ -27,7 +27,7 @@ MODEL_REGISTRY = {
     "wav2vec2": ("models.TorchAudioSSLMOS_wrapper", "TorchAudioSSLMOSWrapper"),
     "hubert": ("models.TorchAudioSSLMOS_wrapper", "TorchAudioSSLMOSWrapper"),
     "reazonspeech": ("models.reazonspeechmos_wrapper", "ReazonSpeechMOSWrapper"),
-    "cdpam": ("models.cdpam_wrapper", "CDPAMWrapper"),
+    "xls": ("models.XLS_wrapper", "XLSRSQAWrapper"),
      "utmos":("models.utmos_wrapper", "UTMOSWrapper")
 
 }

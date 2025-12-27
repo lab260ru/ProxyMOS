@@ -231,7 +231,7 @@ class NISQAWrapper(BaseModelWrapper):
                           (MOS, Noisiness, Discontinuity, Coloration, Loudness)
         """
         x_batch, n_wins = inputs
-        x_batch = x_batch.to(self.device)
+        x_batch = x_batch.to(self.device, dtype=torch.bfloat16)
         n_wins = n_wins.to(self.device)
 
         try:
