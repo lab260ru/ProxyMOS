@@ -31,7 +31,7 @@ def main():
 
    
     
-    # Создаем datasets напрямую с manifest
+
     train_dataset = AudioDataset(
         csv_file='pathtocsv',
     )
