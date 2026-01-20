@@ -4,6 +4,7 @@ import torchaudio
 from typing import Optional, List, Dict, Callable, Any
 from pathlib import Path
 import os
+import pandas as pd 
 
 
 class AudioDataset(Dataset):
@@ -26,6 +27,7 @@ class AudioDataset(Dataset):
         text_transform: Optional[Callable] = None,
         text_key: str = 'transcript',
         recursive: bool = True,
+        csv_file: Optional[str] = None
     ):
         """
         Initialize audio dataset.
@@ -50,7 +52,35 @@ class AudioDataset(Dataset):
         self.audio_transform = audio_transform
         self.text_transform = text_transform
         self.text_key = text_key
+        
         self.file_format = file_format
+        
+            
+        def _load_from_csv(self, csv_file: str) -> List[Dict]:
+            """Load manifest from CSV file."""
+            if not os.path.exists(csv_file):
+                raise FileNotFoundError(f"CSV file not found: {csv_file}")
+            
+            df = pd.read_csv(csv_file)
+        
+        # Проверяем наличие нужных колонок
+            required_cols = ['audio_path', 'mos']
+            missing_cols = [col for col in required_cols if col not in df.columns]
+            if missing_cols:
+                raise ValueError(f"CSV missing required columns: {missing_cols}. Found: {df.columns.tolist()}")
+            
+            # Конвертируем в манифест
+            manifest = []
+            for _, row in df.iterrows():
+                manifest.append({
+                    'audio_path': str(row['audio_path']),
+                    'mos': float(row['mos']),
+                })
+            
+            return manifest
+        
+        if csv_file and not manifest:
+            manifest = self._load_from_csv(csv_file)
 
         # Build manifest if audio_dir is provided
         if audio_dir and not manifest:
@@ -64,10 +94,14 @@ class AudioDataset(Dataset):
                 'transcript': ''
             } for p in files_iter if p.is_file()]
 
-        if not isinstance(manifest, list) or not all(isinstance(m, dict) and 'audio_path' in m for m in manifest):
-            raise ValueError("Manifest must be a list of dicts with 'audio_path' key or provide a valid audio_dir")
+        if not manifest:
+            raise ValueError("Manifest is empty or audio_dir not provided")
+        
+        
+        if not manifest:
+            raise ValueError("No files with MOS scores found")
 
-        # Filter manifest for existence and extension
+
         self.manifest = [
             item for item in manifest
             if item.get('audio_path')
@@ -87,6 +121,7 @@ class AudioDataset(Dataset):
         sample = self.manifest[idx]
         sample_path = sample['audio_path']
         transcript = sample.get(self.text_key, None)
+        mos = sample.get('mos', None)  # Получаем MOS если есть
 
         if not os.path.exists(sample_path):
             raise FileNotFoundError(f"Audio file not found: {sample_path}")
@@ -119,6 +154,7 @@ class AudioDataset(Dataset):
             "waveform": waveform,            # torch.Tensor [C, T]
             "audio_path": sample_path,       # str - file path
             "transcript": transcript,        # optional transcript
-            "text_ids": text_ids            # optional tokenized text
+            "text_ids": text_ids,           # optional tokenized text
+            "mos": torch.tensor(mos, dtype=torch.float32) if mos is not None else None,  # MOS score
         }
 
