@@ -28,7 +28,8 @@ MODEL_REGISTRY = {
     "hubert": ("models.TorchAudioSSLMOS_wrapper", "TorchAudioSSLMOSWrapper"),
     "reazonspeech": ("models.reazonspeechmos_wrapper", "ReazonSpeechMOSWrapper"),
     "xls": ("models.XLS_wrapper", "XLSRSQAWrapper"),
-     "utmos":("models.utmos_wrapper", "UTMOSWrapper")
+     "utmos":("models.utmos_wrapper", "UTMOSWrapper"),
+     "distillmos":("models.distillmos_wrapper", "DistillmosWrapper")
 
 }
 
