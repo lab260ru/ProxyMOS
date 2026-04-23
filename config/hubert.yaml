@@ -18,15 +18,15 @@ model:
 # ----------------------------------------------------------
                     # audio segment length in seconds
 dataset:
-  audio_dir: "audio"
+  audio_dir: /home/maxim/MOS_research/tts_our
   file_extension: ".wav"
   recursive: true
   sample_rate: 16000
-  max_length: 4 
+
 # ----------------------------------------------------------
 inference:
-  batch_size: 1                   # batch size
-  num_workers: 2                    # number of DataLoader workers
+  batch_size: 1                 # batch size
+  num_workers: 4                   # number of DataLoader workers
   prefetch_factor: 2                # optional for better throughput
-  output_dir: "./results/hubert"    # where to save JSON/CSV results
+  output_dir: "./results/hubert/ttsbs1"    # where to save JSON/CSV results
   save_every_n_batches: 1         # how often to save partial results

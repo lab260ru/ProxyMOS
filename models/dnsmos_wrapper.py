@@ -5,7 +5,23 @@ import numpy as np
 from typing import Dict, List
 from pathlib import Path
 from .base_model import BaseModelWrapper
-from .audio_utils import select_deterministic_window_batch
+
+
+import random 
+import numpy as np
+
+def set_seed(seed: int = 42):
+    """Устанавливает случайный сид для всех библиотек"""
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True  # Для воспроизводимости
+    torch.backends.cudnn.benchmark = False 
+    
+SEED = 42  
+set_seed(SEED)
 
 
 class DNSMOSWrapper(BaseModelWrapper):
@@ -94,19 +110,7 @@ class DNSMOSWrapper(BaseModelWrapper):
             resampler = torchaudio.transforms.Resample(sample_rate, self.target_sr)
             audio_mono = resampler(audio_mono)
 
-        # Optional: align to the same deterministic window as NISQA for comparability
-        if bool(self.config.get("align_segment_with_nisqa", True)):
-            segment_seconds = float(self.config.get("segment_seconds", 10.0))
-            deterministic = bool(self.config.get("deterministic_segment", True))
-            segment_seed = self.config.get("segment_seed")
-            audio_mono = select_deterministic_window_batch(
-                audio_batch=audio_mono,
-                sample_rate=self.target_sr,
-                window_seconds=segment_seconds,
-                deterministic=deterministic,
-                seed=segment_seed,
-                pad_mode="repeat",
-            )
+        
 
         # Normalize per-sample to [-1, 1]
         max_vals = audio_mono.abs().amax(dim=1, keepdim=True) + 1e-9

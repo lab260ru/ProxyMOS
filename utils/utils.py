@@ -22,14 +22,15 @@ MODEL_REGISTRY = {
     "dnsmos": ("models.dnsmos_wrapper", "DNSMOSWrapper"),
     "whisqa": ("models.whisqa_wrapper", "WhiSQAWrapper"),
     "mosnet": ("models.mosnet_wrapper", "MosNetWrapper"),
-    "squim": ("models.squim_wrapper", "SquimWrapper"),
     "WavLM": ("models.WavLM_wrapper", "WavLMMOSWrapper"),
     "wav2vec2": ("models.TorchAudioSSLMOS_wrapper", "TorchAudioSSLMOSWrapper"),
     "hubert": ("models.TorchAudioSSLMOS_wrapper", "TorchAudioSSLMOSWrapper"),
-    "reazonspeech": ("models.reazonspeechmos_wrapper", "ReazonSpeechMOSWrapper"),
     "xls": ("models.XLS_wrapper", "XLSRSQAWrapper"),
      "utmos":("models.utmos_wrapper", "UTMOSWrapper"),
-     "distillmos":("models.distillmos_wrapper", "DistillmosWrapper")
+     "distillmos":("models.distillmos_wrapper", "DistillmosWrapper"),
+     "proxymos":("models.proxymos_wrapper", "ProxyMosWrapper"),
+     "proxymoshf":("models.proxymos_hf", "ProxyMosWrapper_HF"),
+
 
 }
 

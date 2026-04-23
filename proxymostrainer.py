@@ -3,8 +3,13 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from pathlib import Path
 from tqdm import tqdm
+import  numpy as  np
 from accelerate import Accelerator
 from torch.optim.lr_scheduler import CosineAnnealingLR
+from scipy.stats import  spearmanr, pearsonr 
+from sklearn.metrics import mean_squared_error, mean_absolute_error
+from encoders import BaseEncoder, build_encoder
+
 
 class AttentiveStatsPooling(nn.Module):
     def __init__(self, dim: int):
@@ -17,7 +22,7 @@ class AttentiveStatsPooling(nn.Module):
 
     def forward(
         self,
-        x: torch.Tensor,         # [B, T, D]
+        x: torch.Tensor,  # [B, T, D]
         padding_mask: torch.Tensor | None = None  # [B, T], True = pad
     ) -> torch.Tensor:
         """
@@ -25,38 +30,38 @@ class AttentiveStatsPooling(nn.Module):
         """
         # scores: [B, T]
         scores = self.att(x).squeeze(-1)
-
         if padding_mask is not None:
             scores = scores.masked_fill(padding_mask, -1e9)
-
-        weights = torch.softmax(scores, dim=1).unsqueeze(-1)  # [B, T, 1]
-
+        weights = torch.softmax(scores, dim=1).unsqueeze(-1)  
+        
         mean = torch.sum(weights * x, dim=1)
         var = torch.sum(weights * (x - mean.unsqueeze(1)) ** 2, dim=1)
-
-        return torch.cat([mean, var], dim=-1)
-
+        std = torch.sqrt(var + 1e-6)  
+        
+        return torch.cat([mean, std], dim=-1)
 
 
 class OmniMOS(nn.Module):
     def __init__(
         self,
-        encoder: nn.Module,
-        hidden_dim: int = 512,
+        encoder: BaseEncoder,  
+        hidden_dim: int = 1024,
         attentive_pooling: bool = True,
+
     ):
         super().__init__()
-
         self.encoder = encoder
-        dim = encoder.cfg.encoder_embed_dim
+        
 
+        dim = hidden_dim
+        
         if attentive_pooling:
             self.pool = AttentiveStatsPooling(dim)
             pooled_dim = dim * 2
         else:
             self.pool = None
             pooled_dim = dim
-
+        
         self.head = nn.Sequential(
             nn.Linear(pooled_dim, hidden_dim),
             nn.GELU(),
@@ -65,40 +70,21 @@ class OmniMOS(nn.Module):
 
     @torch.inference_mode()
     def inference(self, wave: torch.Tensor) -> torch.Tensor:
+        self.eval()
         return self.forward(wave)
 
     def forward(self, wave: torch.Tensor) -> torch.Tensor:
+        wave = wave.to(next(self.encoder.parameters()).dtype)
+
         if wave.dim() == 3 and wave.shape[1] == 1:
             wave = wave.squeeze(1)
-
         if wave.dim() == 3:
             wave = wave.mean(dim=1)
 
-        # wave: [B, T_wave]
-        padding_mask = wave.abs().eq(0)  
-
-
-        out = self.encoder(
-            wave,
-            padding_mask=padding_mask,
-            features_only=True
-        )
-
-        feats = out["x"]                       
-        feat_padding_mask = out["padding_mask"] 
-
-
-        pooled = self.pool(feats, feat_padding_mask)
-
+        feats = self.encoder.encode(wave)          
+        pooled = self.pool(feats, None) if self.pool else feats.mean(1)
         return self.head(pooled).squeeze(-1)
-
-
-
-
-
-
-
-
+    
 
 class ProxyMOSTrainer:
     def __init__(
@@ -116,104 +102,213 @@ class ProxyMOSTrainer:
         self.model = model
         self.train_loader = train_loader
         self.val_loader = val_loader
+        self.max_grad_norm = max_grad_norm
+        self.history = []
+        
         self.save_dir = Path(save_dir)
         self.save_dir.mkdir(parents=True, exist_ok=True)
-        self.max_grad_norm = max_grad_norm
-
-        encoder_params = [p for p in model.encoder.parameters() if p.requires_grad]
-        head_params = [p for p in model.head.parameters() if p.requires_grad]
-
+        
+        self.patience = 0
+        self.best_score = -float('inf')
+        
+        encoder_params = list(model.encoder.parameters())
+        pool_params = list(model.pool.parameters()) if model.pool else []
+        head_params = list(model.head.parameters())
+        
         self.optimizer = torch.optim.AdamW([
-            {"params": encoder_params, "lr": lr * 0.01},
+            {"params": encoder_params, "lr": lr * 0.01},  
+            {"params": pool_params, "lr": lr},
             {"params": head_params, "lr": lr},
         ], weight_decay=weight_decay)
-
+        
         self.criterion = nn.MSELoss()
-
-        self.model, self.optimizer, self.train_loader, self.val_loader = accelerator.prepare(
-            model, self.optimizer, train_loader, val_loader
+        
+        # Accelerate prepare
+        self.model, self.optimizer, self.train_loader, self.val_loader = (
+            accelerator.prepare(
+                self.model, self.optimizer, self.train_loader, self.val_loader,
+            )
         )
 
-    def train(self, epochs=50, early_stop_patience=20):
-        best_rmse = float("inf")
-        patience = 0
-        self.scheduler = CosineAnnealingLR(self.optimizer, T_max=len(self.train_loader)*epochs)
 
+    def _validate_and_save(self, epoch: int, tag: str):
+        self.model.eval()
+        metrics = self.validate()
+        self.model.train()
+        
+        self.accelerator.wait_for_everyone()
+        
+        should_save = False
+        if self.accelerator.is_main_process and metrics is not None:
+            cur_score = (metrics["corr"] + metrics["corr_per"]) / 2
+
+            log = {
+                "epoch": epoch + 1,
+                "tag": tag,
+                "rmse": metrics["rmse"],
+                "mae": metrics["mae"],
+                "corr": metrics["corr"],
+                "score": cur_score,
+            }
+            self.history.append(log)
+            print(
+                f"[Epoch {epoch+1} | {tag}] "
+                f"RMSE={metrics['rmse']:.4f} | "
+                f"MAE={metrics['mae']:.4f} | "
+                f"Corr={metrics['corr']:.4f} | "
+                f"Score={cur_score:.4f}"
+
+            )
+            
+            if cur_score > self.best_score:
+                print("🔥 New best model (composite metric)")
+                self.best_score = cur_score
+                self.patience = 0
+                should_save = True
+            else:
+                self.patience += 1
+        if self.accelerator.num_processes > 1: 
+            should_save = self.accelerator.reduce( 
+                                                  torch.tensor(should_save, device=self.accelerator.device), 
+                                                  reduction="sum" ).item() > 0
+        
+        if should_save:
+            self.save_full(tag)
+        
+
+    def save_full(self, tag: str):
+        state = self.accelerator.get_state_dict(self.model)
+        
+        if self.accelerator.is_main_process:
+            print("💾 Saving state dict to disk...")
+            torch.save(state, self.save_dir / f"best_model_{tag}.pt")
+            print("✅ FULL checkpoint saved")
+        
+        self.accelerator.wait_for_everyone()
+
+    def train(self, epochs: int = 50, early_stop_patience: int = 20):
+        steps_per_epoch = len(self.train_loader)
+        half_epoch_step = steps_per_epoch // 2
+        
+
+        from torch.optim.lr_scheduler import LinearLR, SequentialLR
+        
+        warmup_epochs = 2
+        warmup_steps = steps_per_epoch * warmup_epochs
+        
+        warmup_scheduler = LinearLR(
+            self.optimizer,
+            start_factor=0.1,
+            end_factor=1.0,
+            total_iters=warmup_steps
+        )
+        cosine_scheduler = CosineAnnealingLR(
+            self.optimizer,
+            T_max=steps_per_epoch * epochs - warmup_steps,
+        )
+        self.scheduler = SequentialLR(
+            self.optimizer,
+            [warmup_scheduler, cosine_scheduler],
+            milestones=[warmup_steps]
+        )
+        
         for epoch in range(epochs):
             if hasattr(self.train_loader.sampler, "set_epoch"):
                 self.train_loader.sampler.set_epoch(epoch)
-
+            
             self.model.train()
-            losses = []
-            pbar = tqdm(self.train_loader, disable=not self.accelerator.is_main_process,
-                        desc=f"Epoch {epoch+1}/{epochs}")
-
-            for batch in pbar:
+            pbar = tqdm(
+                self.train_loader,
+                desc=f"Epoch {epoch+1}/{epochs}",
+                disable=not self.accelerator.is_main_process,
+            )
+            
+            for step, batch in enumerate(pbar):
                 wave = batch["waveform"]
                 mos = batch["mos"]
-
+                
                 pred = self.model(wave)
                 loss = self.criterion(pred, mos)
-
+                
                 self.optimizer.zero_grad()
                 self.accelerator.backward(loss)
-
-                if self.max_grad_norm:
-                    self.accelerator.clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
-
+                
+                if self.max_grad_norm is not None:
+                    self.accelerator.clip_grad_norm_(
+                        self.model.parameters(),
+                        self.max_grad_norm,
+                    )
+                
                 self.optimizer.step()
                 self.scheduler.step()
-                losses.append(loss.item())
-                pbar.set_postfix(loss=f"{loss.item():.4f}")
-
-            val_metrics = self.validate()
-
-            if self.accelerator.is_main_process:
-                print(
-                    f"[Epoch {epoch+1}] TrainLoss={sum(losses)/len(losses):.4f} | "
-                    f"ValRMSE={val_metrics['rmse']:.4f} | "
-                    f"ValMAE={val_metrics['mae']:.4f} | Corr={val_metrics['corr']:.4f}"
-                )
-
-                if val_metrics["rmse"] < best_rmse:
-                    best_rmse = val_metrics["rmse"]
-                    patience = 0
-                    torch.save(
-                        self.accelerator.get_state_dict(self.model),
-                        self.save_dir / "best_model.pt"
-                    )
-                else:
-                    patience += 1
-
-            if early_stop_patience and patience >= early_stop_patience:
+                
                 if self.accelerator.is_main_process:
-                    print("Early stopping triggered")
+                    pbar.set_postfix(loss=f"{loss.item():.4f}")
+                
+                if step + 1 == half_epoch_step :
+                    self._validate_and_save(epoch, tag="half")
+            
+            self._validate_and_save(epoch, tag="full")
+            
+            if early_stop_patience and self.patience >= early_stop_patience:
+                if self.accelerator.is_main_process:
+                    print("🛑 Early stopping triggered")
                 break
-
-        return best_rmse
+        
+            self.save_full(tag=f"{epoch+1}")
+            
+        if self.accelerator.is_main_process:
+            import json
+            with open(self.save_dir / "training_log.json", "w") as f:
+                json.dump(self.history, f, indent=2)
+        
+        return self.best_score
 
     @torch.no_grad()
     def validate(self):
         self.model.eval()
-        preds, gts = [], []
+
+        preds = []
+        proxy_gts = []
+
 
         for batch in self.val_loader:
             wave = batch["waveform"]
-            mos = batch["mos"]
+            mos_proxy = batch["mos"]
+
+
             pred = self.model(wave)
+
             preds.append(pred)
-            gts.append(mos)
+            proxy_gts.append(mos_proxy)
 
-        preds = self.accelerator.gather(torch.cat(preds))
-        gts = self.accelerator.gather(torch.cat(gts))
 
-        mse = torch.mean((preds - gts) ** 2)
-        rmse = torch.sqrt(mse)
-        mae = torch.mean(torch.abs(preds - gts))
-        mp, mg = preds.mean(), gts.mean()
-        corr = ((preds - mp) * (gts - mg)).sum() / (
-            torch.sqrt(((preds - mp) ** 2).sum()) *
-            torch.sqrt(((gts - mg) ** 2).sum()) + 1e-8
-        )
-        return {"rmse": rmse.item(), "mae": mae.item(), "corr": corr.item()}
+        preds = torch.cat(preds)
+        proxy_gts = torch.cat(proxy_gts)
+
+
+        preds = self.accelerator.gather(preds).cpu().numpy()
+        proxy_gts = self.accelerator.gather(proxy_gts).cpu().numpy()
+
+        if not self.accelerator.is_main_process:
+            return None
+
+        # =========================================================
+        # 1️⃣ PROXY METRICS (utterance level)
+        # =========================================================
+        pearson_proxy = pearsonr(preds, proxy_gts)[0]
+        spearman_proxy = spearmanr(preds, proxy_gts)[0]
+        rmse_proxy = np.sqrt(mean_squared_error(proxy_gts, preds))
+        mae_proxy = mean_absolute_error(proxy_gts, preds)
+
+        return {
+            # proxy metrics
+            "rmse": rmse_proxy,
+            "mae": mae_proxy,
+            "corr": spearman_proxy,
+            "corr_per": pearson_proxy
+
+        }
+
+
 

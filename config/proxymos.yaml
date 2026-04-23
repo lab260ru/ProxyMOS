@@ -1,0 +1,23 @@
+model:
+  name: "proxymos"
+  device: "cuda"
+  proxymos:
+          onnx : False
+          mixed_precision: "bf16" 
+
+
+dataset:
+  audio_dir: /home/maxim/MOS_research/urgent2024
+  recursive: true            
+  sample_rate: 16000 
+
+# ----------------------------------------------------------
+inference:
+  batch_size: 8
+  num_workers: 4
+  prefetch_factor: 2
+  output_dir: "./results/proxymosonnx/urgent"
+  save_every_n_batches: 1
+  use_accelerator: true       
+  memory_efficient: true      
+  pin_memory: true  

@@ -12,25 +12,23 @@ model:
   checkpoint_path: "nisqa_s.tar"
   config_path: "nisqa_s_np.yaml"
 
-  # Optional model-specific params
-  nisqa:
-    segment_seed: 12345
+
 
 # ----------------------------------------------------------
 
 dataset:
-  audio_dir: "audio"
+  audio_dir: /home/maxim/MOS_research/tts_our
   file_extension: ".wav"
   recursive: true
+  # segment_seconds : 10
   sample_rate: 16000    
-  max_length: 10           # audio segment length in seconds
 
 # ----------------------------------------------------------
 inference:
   batch_size: 1                   # batch size (NISQA supports small batches)
-  num_workers: 2                    # number of DataLoader workers
+  num_workers: 4                    # number of DataLoader workers
   prefetch_factor: 2                # optional for better throughput
-  output_dir: "./results/nisqa"     # where to save JSON/CSV results
+  output_dir: "./results/nisqa/ttsbs1"     # where to save JSON/CSV results
   save_every_n_batches: 1         # how often to save partial results
 
 

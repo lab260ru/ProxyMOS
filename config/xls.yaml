@@ -9,15 +9,15 @@ model:
 
 # ----------------------------------------------------------
 dataset:
-  audio_dir: "audio"
+  audio_dir: /home/maxim/MOS_research/tts_our/audio
   file_extension: ".wav"
   recursive: true
   sample_rate: 16000
 
 # ----------------------------------------------------------
 inference:
-  batch_size: 4
+  batch_size: 8
   num_workers: 2
   prefetch_factor: 2
-  output_dir: "./results/XLS"
+  output_dir: "./results/XLS/ttsfix"
   save_every_n_batches: 1

@@ -205,3 +205,10 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+/results
+/tts_our
+/urgent2024
+train.csv
+val.csv
+/onnx_export
+/checkpoints

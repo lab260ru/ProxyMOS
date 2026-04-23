@@ -1,17 +1,17 @@
 model:
   checkpoint: omniASR-W2V-300M.pt
-  hidden_dim: 1024
   attentive_pooling: true
+  type : '123'
 
 
 training:
-  epochs: 50
-  batch_size: 2
+  epochs: 10
+  batch_size: 8
   num_workers: 4
   lr: 1e-4
   weight_decay: 1e-5
   max_grad_norm: 1.0
-  early_stop_patience: 20
+  early_stop_patience: 10
 
 accelerate:
   mixed_precision: bf16
@@ -19,9 +19,9 @@ accelerate:
 
 
 data:
-  train_csv: /home/maxim/MOS_research/ensemble_all_datasets_z_norm.csv
-  val_csv: /home/maxim/MOS_research/ensemble_somos_z_norm.csv
+  train_csv: /home/maxim/MOS_research/train.csv
+  val_csv: /home/maxim/MOS_research/val.csv
 
 
 output:
-  save_dir: ./checkpoints
+  save_dir: ./checkpoints/omniASR/hf

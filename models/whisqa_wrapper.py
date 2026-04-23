@@ -3,11 +3,24 @@ import torch
 import torchaudio
 from typing import Dict, List, Optional
 from .base_model import BaseModelWrapper
+from accelerate import Accelerator
+import random 
+import numpy as np
 
+def set_seed(seed: int = 42):
+    """Устанавливает случайный сид для всех библиотек"""
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True  # Для воспроизводимости
+    torch.backends.cudnn.benchmark = False 
+    
+SEED = 42  
+set_seed(SEED)
 
 torch.backends.cuda.matmul.allow_tf32 = True
-torch.backends.cudnn.benchmark = True
-torch.backends.cudnn.deterministic = False
 
 torch.backends.cuda.enable_flash_sdp(True)
 torch.backends.cuda.enable_mem_efficient_sdp(True)
@@ -19,7 +32,7 @@ class WhiSQAWrapper(BaseModelWrapper):
     Wrapper for WhiSQA (Whisper-based Speech Quality Assessment)
     """
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: Dict , device = None):
         super().__init__(config)
 
         self.resampler = torchaudio.transforms.Resample(new_freq=16000)
@@ -56,7 +69,7 @@ class WhiSQAWrapper(BaseModelWrapper):
 
         model.load_state_dict(state, strict=True)
 
-        model.to(self.device, dtype=self.dtype)
+        model.to(self.device)
         model.eval()
 
         if self.use_compile:
@@ -84,9 +97,8 @@ class WhiSQAWrapper(BaseModelWrapper):
             audio_batch = audio_batch.mean(dim=1, keepdim=True)
 
 
-        if sample_rate != self.target_sr:
+        if sample_rate != 16000:
             audio_batch = self.resampler(audio_batch)
-
 
         max_val = audio_batch.abs().amax(dim=-1, keepdim=True)
         audio_batch = audio_batch / (max_val.clamp_min(1e-9))
@@ -115,7 +127,7 @@ class WhiSQAWrapper(BaseModelWrapper):
 
     @property
     def sample_rate(self) -> int:
-        return self.target_sr
+        return 16000
 
 
 

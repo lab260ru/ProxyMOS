@@ -1,4 +1,4 @@
-import pkg_resources
+import importlib.metadata as pkg_resources
 import os
 import torch
 import torch.nn as nn

@@ -5,26 +5,21 @@ model:
   name: "dnsmos"
   device: "cuda"  # or "cpu"
   checkpoint_path: "bak_ovr.onnx" 
-  segment_seed: 12345
   
 
     
 
 dataset:
-  audio_dir: "audio"
+  audio_dir: /home/maxim/MOS_research/tts_our
   file_extension: ".wav"
   recursive: true
-  sample_rate: 16000
-  max_length: 10                   # audio segment length in seconds
+  sample_rate: 16000                 # audio segment length in seconds
 
 
 # Inference configuration
 inference:
-  batch_size: 3
-  num_workers: 0
-  output_dir: "./results/dnsmos"
+  batch_size: 1
+  num_workers: 4
+  output_dir: "./results/dnsmos/ttsbs1"
   save_every_n_batches: 1
   prefetch_factor: 2
-  resume: true
-  append_results: true
-  experiment_name: "dnsmos_test"

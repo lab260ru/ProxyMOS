@@ -1,28 +1,23 @@
-# ==========================================================
-#  WhiSQA Inference Configuration
-#  Author: your_name
-#  Description:
-#    Configuration file for running WhiSQA using the WhiSQAWrapper model.
-# ==========================================================
-
 model:
-  name: "whisqa"                 # Must match wrapper class name (WhiSQAWrapper)
-  device: "cuda"                # "cuda" or "cpu"
-  checkpoint_path: "multi_head_model.pt"  # path to pretrained WhiSQA checkpoint
+  name: "whisqa"                
+  device: "cuda"               
+  checkpoint_path: "multi_head_model.pt"  
+  whisqa:
+    mixed_precision: "bf16"
+    compile: true        
+
 
   
-# ----------------------------------------------------------
+# ---------------------------------------------------------
 dataset:
-  audio_dir: "audio"
-  file_extension: ".wav"
+  audio_dir: /home/maxim/MOS_research/urgent2024
   recursive: true
-  sample_rate: 16000
-  max_length: 4                    # audio segment length in seconds
+  sample_rate: 16000                 
 
 # ----------------------------------------------------------
 inference:
-  batch_size: 1                   # batch size
+  batch_size:  1                # batch size
   num_workers: 2                    # number of DataLoader workers
   prefetch_factor: 2                # optional for better throughput
-  output_dir: "./results/whisqa"    # where to save JSON/CSV results
+  output_dir: "./results/whisqa/urgent"    # where to save JSON/CSV results
   save_every_n_batches: 1         # how often to save partial results

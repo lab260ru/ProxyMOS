@@ -1,30 +1,24 @@
-# ==========================================================
-#  NISQA Inference Configuration
-#  Author: your_name
-#  Description:
-#    Configuration file for running non-intrusive speech quality
-#    assessment (NISQA) using the NISQAWrapper model.
-# ==========================================================
 
 model:
   name: "utmos"                
   device: "cuda"   
-  checkpoint_path: 'epoch3D7459.ckpt'  # Path to UTMOS Lightning checkpoint
-  ssl_model_path: 'wav2vec_small.pt'   # Path to SSL model checkpoint (wav2vec_small.pt, w2v_large_lv_fsh_swbd_cv.pt, or xlsr_53_56k.pt) 
+  checkpoint_path: 'epoch3D7459.ckpt'  
+  ssl_model_path: '/home/maxim/MOS_research/UTMOS/wav2vec_small.pt' 
 
 
 
-# ----------------------------------------------------------
 
 dataset:
-  audio_dir: "audio"
-  file_extension: ".wav"
+  audio_dir: /home/maxim/MOS_research/tts_our
   recursive: true
   sample_rate: 16000
-# ----------------------------------------------------------
+
 inference:
-  batch_size: 1                   # batch size (NISQA supports small batches)
-  num_workers: 2                    # number of DataLoader workers
-  prefetch_factor: 2                # optional for better throughput
-  output_dir: "./results/utmos"     # where to save JSON/CSV results
+  batch_size: 1             
+  num_workers: 4                    
+  prefetch_factor: 2             
+  output_dir: "./results/utmos/ttsbs1"     
   save_every_n_batches: 1  
+  use_accelerator: true       
+  memory_efficient: true      
+  pin_memory: true   

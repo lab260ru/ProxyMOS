@@ -12,6 +12,21 @@ from nisqa.src.nisqab.core.model_torch import model_init
 from nisqa.src.nisqab.utils.audio_cache import create_audio_length_cache
 from nisqa.src.nisqab.utils.audio_sampler import LengthBasedBatchSampler
 import yaml
+import random 
+import numpy as np
+
+def set_seed(seed: int = 42):
+    """Устанавливает случайный сид для всех библиотек"""
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True  # Для воспроизводимости
+    torch.backends.cudnn.benchmark = False 
+    
+SEED = 42  
+set_seed(SEED)
 
 torch.backends.cuda.matmul.allow_tf32 = True 
 torch.backends.cuda.enable_flash_sdp(True)

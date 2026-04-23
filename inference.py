@@ -50,11 +50,12 @@ def main():
             manifest=config['dataset'].get('manifest'),
             audio_dir=config['dataset'].get('audio_dir'),
             sample_rate=config['dataset'].get('sample_rate', 16000),
-            file_format=config['dataset'].get('file_extension', '.wav'),
-            time_length=config['dataset'].get('max_length', None),
-            recursive=config['dataset'].get('recursive', True)
+            recursive=config['dataset'].get('recursive', True),
+            segment_seconds=config['dataset'].get('segment_seconds', None)
+            
         )
         console.print(f"[green]✅ Loaded {len(dataset)} audio files[/green]\n")
+        console.print(f"[{config['dataset'].get('segment_seconds')}]")
         
         # Create DataLoader
         dataloader = create_optimized_dataloader(
