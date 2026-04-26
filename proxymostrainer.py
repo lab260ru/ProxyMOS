@@ -8,7 +8,7 @@ from accelerate import Accelerator
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from scipy.stats import  spearmanr, pearsonr 
 from sklearn.metrics import mean_squared_error, mean_absolute_error
-from encoders import BaseEncoder, build_encoder
+from fairseq2.nn import BatchLayout
 
 
 class AttentiveStatsPooling(nn.Module):
@@ -41,49 +41,97 @@ class AttentiveStatsPooling(nn.Module):
         return torch.cat([mean, std], dim=-1)
 
 
+
 class OmniMOS(nn.Module):
+    """
+    Mean Opinion Score (MOS) prediction model built on top of a Wav2Vec2-style encoder.
+ 
+    Args:
+        config_omni: Model configuration object (passed to encoder).
+        encoder (nn.Module): Feature extraction encoder (e.g. Wav2Vec2).
+        hidden_dim (int): Hidden dimensionality. Default: 1024.
+        attentive_pooling (bool): Use attentive stats pooling instead of mean pooling.
+    """
+ 
     def __init__(
         self,
-        encoder: BaseEncoder,  
+        encoder: nn.Module,
         hidden_dim: int = 1024,
         attentive_pooling: bool = True,
-
     ):
         super().__init__()
+ 
         self.encoder = encoder
-        
-
+ 
         dim = hidden_dim
-        
+ 
         if attentive_pooling:
             self.pool = AttentiveStatsPooling(dim)
             pooled_dim = dim * 2
         else:
             self.pool = None
             pooled_dim = dim
-        
+ 
         self.head = nn.Sequential(
             nn.Linear(pooled_dim, hidden_dim),
             nn.GELU(),
             nn.Linear(hidden_dim, 1),
         )
-
+ 
     @torch.inference_mode()
     def inference(self, wave: torch.Tensor) -> torch.Tensor:
+        """Run forward pass in eval mode without gradient tracking."""
         self.eval()
         return self.forward(wave)
-
+ 
     def forward(self, wave: torch.Tensor) -> torch.Tensor:
-        wave = wave.to(next(self.encoder.parameters()).dtype)
-
+        """
+        Args:
+            wave (torch.Tensor): Waveform tensor of shape [B, T] or [B, 1, T].
+ 
+        Returns:
+            torch.Tensor: MOS scores of shape [B].
+        """
+        wave = wave.float()
+ 
+        # Normalize input shape to [B, T]
         if wave.dim() == 3 and wave.shape[1] == 1:
             wave = wave.squeeze(1)
         if wave.dim() == 3:
             wave = wave.mean(dim=1)
+ 
+        B, T = wave.shape
+ 
+        seqs_layout = BatchLayout(
+            shape=(B, T),
+            seq_lens=[T] * B,
+            packed=False,
+            device=wave.device,
+        )
+ 
+        # Extract features from the encoder
+        features = self.encoder.extract_features(wave, seqs_layout)
+ 
+        # Handle various return types from extract_features
+        if hasattr(features, "seqs"):
+            feats = features.seqs              # [B, T, D]
+        elif hasattr(features, "encoder_output"):
+            feats = features.encoder_output
+        elif isinstance(features, tuple):
+            feats = features[0]
+        else:
+            feats = features
+ 
+        # Pool across time dimension
+        if self.pool is not None:
+            pooled = self.pool(feats, None)    # [B, 2D]
+        else:
+            pooled = feats.mean(dim=1)         # [B, D]
+ 
+        return self.head(pooled).squeeze(-1)   
 
-        feats = self.encoder.encode(wave)          
-        pooled = self.pool(feats, None) if self.pool else feats.mean(1)
-        return self.head(pooled).squeeze(-1)
+
+
     
 
 class ProxyMOSTrainer:
