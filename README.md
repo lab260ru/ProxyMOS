@@ -88,20 +88,6 @@ ProxyMOS outperforms all individual teacher models on both benchmarks.
 
 **mos260** is a new Russian TTS evaluation dataset introduced as part of this work, annotated via crowdsourcing using the [LabelSpeech](https://github.com/mtuciru/LabelSpeech) platform.
 
----
-
-## Installation
-
-```bash
-git clone <repo-url>
-cd mos-research
-pip install -e .
-```
-
----
-
-
-
 ## Citation
 
 ```bibtex
