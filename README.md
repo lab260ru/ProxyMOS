@@ -102,7 +102,7 @@ ProxyMOS outperforms all individual teacher models on both benchmarks.
 | [UTMOS](https://github.com/sarulab-speech/UTMOS22) | 0.721 | 0.748 | 0.560 | 0.565 | 0.450 |
 | [XLS](https://huggingface.co/facebook/wav2vec2-xls-r-300m) | 0.743 | 0.745 | 0.561 | 0.542 | 0.426 |
 | [MosNet](https://github.com/lochenchou/MOSNet) | 0.279 | 0.110 | 0.073 | 0.908 | 0.702 |
-| [HuBERT](https://pytorch.org/audio/stable/pipelines.html#torchaudio.pipelines.HUBERT_BASE)) | -0.005 | -0.002 | -0.001 | 1.073 | 0.855 |
+| [HuBERT](https://pytorch.org/audio/stable/pipelines.html#torchaudio.pipelines.HUBERT_BASE) | -0.005 | -0.002 | -0.001 | 1.073 | 0.855 |
 | [NISQA](https://github.com/gabrielmittag/NISQA) | 0.028 | -0.027 | -0.021 | 1.055 | 0.863 |
 | [Dnsmos](https://github.com/microsoft/DNS-Challenge/tree/master/DNSMOS) | -0.010 | -0.041 | -0.028 | 1.075 | 0.876 |
 
@@ -119,7 +119,7 @@ ProxyMOS outperforms all individual teacher models on both benchmarks.
 | [Whisqa](https://github.com/leto19/WhiSQA) | 0.576 | 0.466 | 0.332 | 1.050 | 0.841 |
 | [NISQA](https://github.com/gabrielmittag/NISQA) | 0.261 | 0.226 | 0.158 | 1.386 | 1.105 |
 | [Dnsmos](https://github.com/microsoft/DNS-Challenge/tree/master/DNSMOS) | 0.075 | 0.056 | 0.039 | 1.551 | 1.254 |
-| [HuBERT](https://huggingface.co/facebook/hubert-large-ls960-ft) | -0.003 | -0.009 | -0.006 | 1.614 | 1.294 |
+| [HuBERT](https://pytorch.org/audio/stable/pipelines.html#torchaudio.pipelines.HUBERT_BASE) | -0.003 | -0.009 | -0.006 | 1.614 | 1.294 |
 | [MosNet](https://github.com/lochenchou/MOSNet) | -0.210 | -0.209 | -0.146 | 1.773 | 1.384 |
 ## Citation
 
