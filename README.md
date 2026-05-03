@@ -88,6 +88,39 @@ ProxyMOS outperforms all individual teacher models on both benchmarks.
 
 **mos260** is a new Russian TTS evaluation dataset introduced as part of this work, annotated via crowdsourcing using the [LabelSpeech](https://github.com/mtuciru/LabelSpeech) platform.
 
+## Model Performance
+
+### URGENT Dataset
+
+| Model | Pearson | Spearman | Kendall | RMSE | MAE |
+|-------|---------|----------|---------|------|-----|
+| Proxymos | 0.802 | 0.799 | 0.617 | 0.474 | 0.370 |
+| Proxymosonnx | 0.779 | 0.778 | 0.591 | 0.502 | 0.393 |
+| Proxymosonnx16 | 0.779 | 0.778 | 0.591 | 0.502 | 0.393 |
+| Whisqa | 0.780 | 0.773 | 0.588 | 0.502 | 0.397 |
+| Distillmos | 0.759 | 0.748 | 0.568 | 0.525 | 0.411 |
+| UTMOS | 0.721 | 0.748 | 0.560 | 0.565 | 0.450 |
+| XLS | 0.743 | 0.745 | 0.561 | 0.542 | 0.426 |
+| MosNet | 0.279 | 0.110 | 0.073 | 0.908 | 0.702 |
+| HuBERT | -0.005 | -0.002 | -0.001 | 1.073 | 0.855 |
+| NISQA | 0.028 | -0.027 | -0.021 | 1.055 | 0.863 |
+| Dnsmos | -0.010 | -0.041 | -0.028 | 1.075 | 0.876 |
+
+### MOS260 Dataset
+
+| Model | Pearson | Spearman | Kendall | RMSE | MAE |
+|-------|---------|----------|---------|------|-----|
+| Proxymosonnx | 0.700 | 0.647 | 0.481 | 0.883 | 0.687 |
+| Proxymosonnx16 | 0.700 | 0.647 | 0.481 | 0.883 | 0.687 |
+| Proxymos | 0.691 | 0.636 | 0.474 | 0.897 | 0.692 |
+| Distillmos | 0.670 | 0.613 | 0.456 | 0.927 | 0.712 |
+| UTMOS | 0.622 | 0.555 | 0.403 | 0.991 | 0.781 |
+| XLS | 0.583 | 0.473 | 0.337 | 1.041 | 0.834 |
+| Whisqa | 0.576 | 0.466 | 0.332 | 1.050 | 0.841 |
+| NISQA | 0.261 | 0.226 | 0.158 | 1.386 | 1.105 |
+| Dnsmos | 0.075 | 0.056 | 0.039 | 1.551 | 1.254 |
+| HuBERT | -0.003 | -0.009 | -0.006 | 1.614 | 1.294 |
+| MosNet | -0.210 | -0.209 | -0.146 | 1.773 | 1.384 |
 ## Citation
 
 ```bibtex
